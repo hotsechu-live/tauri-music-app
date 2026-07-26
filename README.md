@@ -1,7 +1,7 @@
-# Tauri + Vanilla TS
-
-This template should help get you started developing with Tauri in vanilla HTML, CSS and Typescript.
-
-## Recommended IDE Setup
-
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+# Tauri Music App
+# Aplicación para la gestión de colecciones de canciones
+## App contruida usando Tauri + Vanilla TS + Vite + Rust + SQLite
+## Descripción
+Aplicación de escritorio local-first para gestionar y reproducir una colección de música almacenada en carpetas locales.
+Permit gestionar una colección de canciones almacenadas en local en una o varias carpetas accesibles por la aplicación. 
+Los archivos de música podrán estar en distintos formatos, como MP3, FLAC, OGG, WAV, M4A
