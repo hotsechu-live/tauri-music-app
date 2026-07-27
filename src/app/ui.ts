@@ -58,15 +58,17 @@ export function renderApp(state: AppState, root: HTMLElement) {
 
   root.innerHTML = `
     <section class="app-shell">
-      <header class="panel">
-        <h1>Tauri Music App</h1>
-        <p>Gestión local de colecciones, listas y reproducción básica.</p>
-        <div class="guide-box">
-          <strong>Recorrido de prueba:</strong> 1) importa una carpeta, 2) crea una lista, 3) añade canciones, 4) reproduce la lista.
-        </div>
-      </header>
+      <nav class="panel app-menu" aria-label="Navegación principal">
+        <button class="menu-item ${state.activeView === "songs" ? "active" : ""}" data-action="navigate" data-view="songs">Canciones</button>
+        <button class="menu-item ${state.activeView === "collections" ? "active" : ""}" data-action="navigate" data-view="collections">Colecciones</button>
+        <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas</button>
+        <button class="menu-item ${state.activeView === "player" ? "active" : ""}" data-action="navigate" data-view="player">Reproductor</button>
+        <button class="menu-item ${state.activeView === "metadata" ? "active" : ""}" data-action="navigate" data-view="metadata">Metadatos</button>
+        <button class="menu-item ${state.activeView === "configuration" ? "active" : ""}" data-action="navigate" data-view="configuration">Configuración</button>
+        <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
+      </nav>
 
-      <section class="panel">
+      <section class="panel ${state.activeView === "configuration" ? "" : "hidden"}">
         <h2>Configuración inicial</h2>
         <button id="import-btn">Seleccionar carpeta de música</button>
         <div id="collection-form" class="${state.selectedFolder ? "" : "hidden"}">
@@ -79,7 +81,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ${state.error ? `<div class="error">${escapeHtml(state.error)}</div>` : ""}
       </section>
 
-      <section class="panel">
+      <section class="panel ${state.activeView === "collections" ? "" : "hidden"}">
         <h2>Colecciones</h2>
         ${state.collections.length === 0 ? "<p>No hay colecciones todavía. Importa una carpeta para empezar.</p>" : `<ul class="collections-list">
           ${state.collections
@@ -97,16 +99,14 @@ export function renderApp(state: AppState, root: HTMLElement) {
         </ul>`}
       </section>
 
-      <section class="panel">
-        <h2>Canciones</h2>
-        <div class="filter-row">
+      <section class="panel ${state.activeView === "songs" ? "" : "hidden"}">
+        <div class="filter-row songs-filter-row">
           <div class="search-input-row">
             <input id="song-search" type="search" value="${escapeHtml(state.pendingSearchQuery)}" placeholder="Buscar canciones" />
             <button id="search-submit" class="search-button" aria-label="Buscar">🔍</button>
           </div>
-          <label for="search-field">Filtrar por campo</label>
-          <select id="search-field">
-            <option value="">Todos los campos</option>
+          <select id="search-field" aria-label="Filtrar por campo">
+            <option value="">Buscar en todos los campos</option>
             <option value="title" ${state.searchField === "title" ? "selected" : ""}>Título</option>
             <option value="artist" ${state.searchField === "artist" ? "selected" : ""}>Artista</option>
             <option value="album" ${state.searchField === "album" ? "selected" : ""}>Álbum</option>
@@ -114,11 +114,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <option value="year" ${state.searchField === "year" ? "selected" : ""}>Año</option>
             <option value="collection" ${state.searchField === "collection" ? "selected" : ""}>Colección</option>
           </select>
-        </div>
-        <div class="filter-row">
-          <label for="collection-filter">Filtrar por colección</label>
-          <select id="collection-filter">
-            <option value="">Todas las colecciones</option>
+          <select id="collection-filter" aria-label="Filtrar por colección">
+            <option value="">Mostrar todas las colecciones</option>
             ${state.collections
               .map(
                 (collection) => `
@@ -157,10 +154,10 @@ export function renderApp(state: AppState, root: HTMLElement) {
                     <td>${escapeHtml(song.genre)}</td>
                     <td>${escapeHtml(song.collection_name)}</td>
                     <td>${escapeHtml(song.format)}</td>
-                    <td>
-                      <button data-action="play-song" data-song-id="${song.id}">Reproducir</button>
-                      <button data-action="edit-song-metadata" data-song-id="${song.id}">Metadatos</button>
-                      <button data-action="add-song-to-playlist" data-song-id="${song.id}">Añadir</button>
+                    <td class="song-actions">
+                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="Reproducir" title="Reproducir">&#9654;</button>
+                      <button class="icon-button" data-action="edit-song-metadata" data-song-id="${song.id}" aria-label="Editar metadatos" title="Editar metadatos">&#9998;</button>
+                      <button class="icon-button" data-action="add-song-to-playlist" data-song-id="${song.id}" aria-label="Añadir a una lista" title="Añadir a una lista">+</button>
                     </td>
                   </tr>
                 `,
@@ -170,7 +167,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         </table>`}
       </section>
 
-      <section class="panel">
+      <section class="panel ${state.activeView === "metadata" ? "" : "hidden"}">
         <h2>Metadatos personalizados</h2>
         ${state.selectedSongId !== null && state.selectedSongId !== undefined ? `
           ${(() => {
@@ -195,7 +192,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ` : "<p>Selecciona una canción para editar sus metadatos.</p>"}
       </section>
 
-      <section class="panel">
+      <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
         <h2>Listas</h2>
         <button id="create-playlist-btn">Crear lista</button>
         ${state.playlists.length === 0 ? "<p>No hay listas todavía. Crea una lista para empezar.</p>" : `<ul class="collections-list">
@@ -240,7 +237,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ` : ""}
       </section>
 
-      <section class="panel">
+      <section class="panel ${state.activeView === "player" ? "" : "hidden"}">
         <h2>Reproductor</h2>
         <p><strong>Canción actual:</strong> ${currentSong ? escapeHtml(currentSong.title) : "Sin selección"}</p>
         <p><strong>Lista actual:</strong> ${currentPlaylist ? escapeHtml(currentPlaylist.name) : "Sin lista"}</p>

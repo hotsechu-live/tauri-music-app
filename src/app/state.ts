@@ -32,8 +32,10 @@ export type CustomMetadata = {
 
 export type PlaybackMode = "manual" | "sequential" | "shuffle";
 export type PlaybackStatus = "stopped" | "playing" | "paused";
+export type AppView = "configuration" | "collections" | "songs" | "metadata" | "playlists" | "player";
 
 export type AppState = {
+  activeView: AppView;
   songs: Song[];
   playlists: Playlist[];
   collections: Collection[];
@@ -60,6 +62,7 @@ export type AppState = {
 };
 
 export const createInitialState = (): AppState => ({
+  activeView: "songs",
   songs: [],
   playlists: [],
   collections: [],

@@ -1,4 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, listSongCustomMetadata, setSongCustomMetadata, deleteSongCustomMetadata } from "./api.js";
 import { getInitialState, renderApp } from "./ui.js";
 
@@ -194,6 +195,39 @@ async function bootstrap() {
   root.addEventListener("click", async (event) => {
     const target = event.target as HTMLElement | null;
     if (!target) {
+      return;
+    }
+
+    if (target.dataset.action === "navigate") {
+      state.activeView = target.dataset.view as typeof state.activeView;
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "open-about") {
+      try {
+        const existingWindow = await WebviewWindow.getByLabel("about");
+        if (existingWindow) {
+          await existingWindow.show();
+          await existingWindow.setFocus();
+        } else {
+          const aboutWindow = new WebviewWindow("about", {
+            url: "about.html",
+            title: "Acerca de Tauri Music App",
+            width: 440,
+            height: 300,
+            resizable: false,
+            center: true,
+          });
+          await aboutWindow.once("tauri://error", (error) => {
+            state.error = `No se pudo abrir la ventana «Acerca de»: ${String(error.payload)}`;
+            render();
+          });
+        }
+      } catch (error) {
+        state.error = `No se pudo abrir la ventana «Acerca de»: ${String(error)}`;
+        render();
+      }
       return;
     }
 
