@@ -4,7 +4,7 @@ use chrono::Utc;
 use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
-use tauri::{command, AppHandle};
+use tauri::{command, AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 use walkdir::WalkDir;
 
@@ -31,6 +31,12 @@ struct PlaylistRecord {
 }
 
 #[derive(Debug, Serialize)]
+struct CustomMetadataRecord {
+    key: String,
+    value: String,
+}
+
+#[derive(Debug, Serialize)]
 struct CollectionRecord {
     id: i64,
     name: String,
@@ -42,6 +48,10 @@ fn db_path() -> PathBuf {
     let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     path.push("music_app.sqlite");
     path
+}
+
+fn normalize_metadata_key(key: &str) -> String {
+    key.trim().to_lowercase()
 }
 
 fn open_connection() -> Result<Connection> {
@@ -119,8 +129,40 @@ fn init_schema(conn: &Connection) -> Result<()> {
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         );
+
+        CREATE INDEX IF NOT EXISTS idx_songs_collection_id ON songs(collection_id);
+        CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist_id ON playlist_songs(playlist_id, position);
         "#,
     )?;
+
+    conn.execute(
+        "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?1, ?2)",
+        params!["default_playback_mode", "manual"],
+    )?;
+
+    Ok(())
+}
+
+/// Makes the audio files of registered collections available to the Tauri
+/// asset protocol. The frontend can then load them in an HTML audio element
+/// without gaining access to unrelated folders on the machine.
+fn allow_registered_collection_folders(app_handle: &AppHandle) -> Result<(), String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    let mut statement = conn
+        .prepare("SELECT folder_path FROM collections")
+        .map_err(|e| e.to_string())?;
+    let folders = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    for folder in folders {
+        app_handle
+            .asset_protocol_scope()
+            .allow_directory(folder, true)
+            .map_err(|e| format!("No se pudo autorizar la carpeta de música: {e}"))?;
+    }
 
     Ok(())
 }
@@ -150,7 +192,11 @@ fn select_music_folder(app_handle: AppHandle) -> Result<Option<String>, String> 
 }
 
 #[command]
-fn import_collection(folder_path: String, collection_name: String) -> Result<serde_json::Value, String> {
+fn import_collection(
+    app_handle: AppHandle,
+    folder_path: String,
+    collection_name: String,
+) -> Result<serde_json::Value, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     init_schema(&conn).map_err(|e| e.to_string())?;
 
@@ -242,6 +288,11 @@ fn import_collection(folder_path: String, collection_name: String) -> Result<ser
 
         imported += 1;
     }
+
+    app_handle
+        .asset_protocol_scope()
+        .allow_directory(&folder_path, true)
+        .map_err(|e| format!("No se pudo autorizar la carpeta de música: {e}"))?;
 
     Ok(serde_json::json!({ "imported": imported, "collection_id": collection_id }))
 }
@@ -339,6 +390,25 @@ fn create_playlist(name: String, description: Option<String>) -> Result<i64, Str
 }
 
 #[command]
+fn update_playlist(playlist_id: i64, name: String, description: Option<String>) -> Result<String, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE playlists SET name = ?1, description = ?2 WHERE id = ?3",
+        params![name, description, playlist_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn delete_playlist(playlist_id: i64) -> Result<String, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM playlists WHERE id = ?1", params![playlist_id])
+        .map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
+}
+
+#[command]
 fn add_song_to_playlist(playlist_id: i64, song_id: i64) -> Result<String, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -365,6 +435,94 @@ fn add_song_to_playlist(playlist_id: i64, song_id: i64) -> Result<String, String
     )
     .map_err(|e| e.to_string())?;
 
+    Ok("ok".to_string())
+}
+
+#[command]
+fn remove_song_from_playlist(playlist_id: i64, song_id: i64) -> Result<String, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM playlist_songs WHERE playlist_id = ?1 AND song_id = ?2",
+        params![playlist_id, song_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let rows: Vec<(i64, i64)> = conn
+        .prepare("SELECT id, song_id FROM playlist_songs WHERE playlist_id = ?1 ORDER BY position, id")
+        .map_err(|e| e.to_string())?
+        .query_map(params![playlist_id], |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+
+    for (index, (_, song_id)) in rows.into_iter().enumerate() {
+        conn.execute(
+            "UPDATE playlist_songs SET position = ?1 WHERE playlist_id = ?2 AND song_id = ?3",
+            params![(index as i64) + 1, playlist_id, song_id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    Ok("ok".to_string())
+}
+
+#[command]
+fn reorder_playlist_songs(playlist_id: i64, song_order: Vec<i64>) -> Result<String, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    for (index, song_id) in song_order.iter().enumerate() {
+        conn.execute(
+            "UPDATE playlist_songs SET position = ?1 WHERE playlist_id = ?2 AND song_id = ?3",
+            params![(index as i64) + 1, playlist_id, song_id],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok("ok".to_string())
+}
+
+#[command]
+fn list_song_custom_metadata(song_id: i64) -> Result<Vec<CustomMetadataRecord>, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT key, value FROM song_custom_metadata WHERE song_id = ?1 ORDER BY key")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![song_id], |row| {
+            Ok(CustomMetadataRecord {
+                key: row.get(0)?,
+                value: row.get(1)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[command]
+fn set_song_custom_metadata(song_id: i64, key: String, value: String) -> Result<String, String> {
+    let normalized_key = normalize_metadata_key(&key);
+    if normalized_key.is_empty() {
+        return Err("La clave del metadato no puede estar vacía".to_string());
+    }
+
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO song_custom_metadata (song_id, key, value) VALUES (?1, ?2, ?3) ON CONFLICT(song_id, key) DO UPDATE SET value = excluded.value",
+        params![song_id, normalized_key, value],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok("ok".to_string())
+}
+
+#[command]
+fn delete_song_custom_metadata(song_id: i64, key: String) -> Result<String, String> {
+    let normalized_key = normalize_metadata_key(&key);
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM song_custom_metadata WHERE song_id = ?1 AND key = ?2",
+        params![song_id, normalized_key],
+    )
+    .map_err(|e| e.to_string())?;
     Ok("ok".to_string())
 }
 
@@ -412,11 +570,26 @@ fn list_playlist_songs(playlist_id: i64) -> Result<Vec<SongRecord>, String> {
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::normalize_metadata_key;
+
+    #[test]
+    fn normalize_metadata_key_trims_and_lowercases() {
+        assert_eq!(normalize_metadata_key("  Comment  "), "comment");
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            allow_registered_collection_folders(app.handle())
+                .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             init_database,
             select_music_folder,
@@ -426,7 +599,14 @@ pub fn run() {
             rename_collection,
             delete_collection,
             create_playlist,
+            update_playlist,
+            delete_playlist,
             add_song_to_playlist,
+            remove_song_from_playlist,
+            reorder_playlist_songs,
+            list_song_custom_metadata,
+            set_song_custom_metadata,
+            delete_song_custom_metadata,
             list_playlists,
             list_playlist_songs
         ])

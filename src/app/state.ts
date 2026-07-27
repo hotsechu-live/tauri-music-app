@@ -25,6 +25,14 @@ export type Collection = {
   created_at: string;
 };
 
+export type CustomMetadata = {
+  key: string;
+  value: string;
+};
+
+export type PlaybackMode = "manual" | "sequential" | "shuffle";
+export type PlaybackStatus = "stopped" | "playing" | "paused";
+
 export type AppState = {
   songs: Song[];
   playlists: Playlist[];
@@ -36,6 +44,19 @@ export type AppState = {
   selectedFolder: string | null;
   status: string;
   error: string | null;
+  selectedPlaylistId: number | null;
+  playlistSongs: Song[];
+  selectedSongId: number | null;
+  playbackQueue: Song[];
+  playbackIndex: number;
+  playbackMode: PlaybackMode;
+  playbackStatus: PlaybackStatus;
+  currentPlaybackSongId: number | null;
+  currentPlaybackTime: number;
+  currentPlaybackDuration: number;
+  selectedSongMetadata: CustomMetadata[];
+  metadataDraftKey: string;
+  metadataDraftValue: string;
 };
 
 export const createInitialState = (): AppState => ({
@@ -49,4 +70,17 @@ export const createInitialState = (): AppState => ({
   selectedFolder: null,
   status: "idle",
   error: null,
+  selectedPlaylistId: null,
+  playlistSongs: [],
+  selectedSongId: null,
+  playbackQueue: [],
+  playbackIndex: 0,
+  playbackMode: "manual",
+  playbackStatus: "stopped",
+  currentPlaybackSongId: null,
+  currentPlaybackTime: 0,
+  currentPlaybackDuration: 0,
+  selectedSongMetadata: [],
+  metadataDraftKey: "",
+  metadataDraftValue: "",
 });

@@ -14,7 +14,7 @@ body {
 }
 
 #app {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -31,7 +31,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   border-radius: 8px;
   border: 1px solid #d1d5db;
   padding: 0.6rem 0.8rem;
@@ -54,6 +55,78 @@ button {
   margin-top: 0.5rem;
 }
 
+.filter-row,
+.action-row,
+.player-controls,
+.inline-actions,
+.metadata-editor {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+
+.search-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex: 1;
+}
+
+.collections-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.guide-box {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.collections-list li,
+.playlist-songs li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: center;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 0.5rem;
+}
+
+.meta {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.playlist-songs {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.metadata-editor {
+  margin-bottom: 0.75rem;
+}
+
+progress {
+  width: 100%;
+  max-width: 320px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -64,4 +137,5 @@ td {
   text-align: left;
   padding: 0.5rem 0;
   border-bottom: 1px solid #e5e7eb;
+  vertical-align: top;
 }
