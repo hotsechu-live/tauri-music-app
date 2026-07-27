@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Base de datos local
+/src-tauri/music_app.sqlite
+/src-tauri/music_app.sqlite-shm
+/src-tauri/music_app.sqlite-wal
