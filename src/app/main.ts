@@ -1,5 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { initDatabase, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, listSongCustomMetadata, setSongCustomMetadata, deleteSongCustomMetadata } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, listSongCustomMetadata, setSongCustomMetadata, deleteSongCustomMetadata } from "./api.js";
 import { getInitialState, renderApp } from "./ui.js";
 
 async function bootstrap() {
@@ -77,6 +77,18 @@ async function bootstrap() {
     state.status = `Reproduciendo ${song.title}`;
     render();
 
+    // Windows MediaPlayer decodifica ALAC/M4A, a diferencia del elemento
+    // HTMLAudioElement usado anteriormente por el WebView.
+    try {
+      await playNativeAudio(song.file_path);
+    } catch (error) {
+      state.error = `No se pudo iniciar la reproducción: ${String(error)}`;
+      state.playbackStatus = "stopped";
+      state.status = "Error de reproducción";
+      render();
+    }
+    return;
+
     stopAudioPlayback();
     const audio = new Audio(buildAudioSource(song.file_path));
     audio.preload = "auto";
@@ -152,7 +164,7 @@ async function bootstrap() {
     try {
       await audio.play();
     } catch (error) {
-      state.error = `No se pudo iniciar “${song.title}”: ${error instanceof Error ? error.message : String(error)}`;
+      state.error = `No se pudo iniciar la reproducción: ${String(error)}`;
       state.playbackStatus = "stopped";
       state.status = "Error de reproducción";
       render();
@@ -458,19 +470,17 @@ async function bootstrap() {
     }
 
     if (target.dataset.action === "playback-toggle") {
-      if (!audioElement) {
-        await playCurrentSong();
-        return;
-      }
-
       if (state.playbackStatus === "playing") {
-        audioElement.pause();
+        await pauseNativeAudio();
         state.playbackStatus = "paused";
         state.status = `Pausado`;
-      } else {
-        await audioElement.play();
+      } else if (state.playbackStatus === "paused") {
+        await resumeNativeAudio();
         state.playbackStatus = "playing";
         state.status = `Reproduciendo`;
+      } else {
+        await playCurrentSong();
+        return;
       }
       render();
       return;
@@ -478,6 +488,7 @@ async function bootstrap() {
 
     if (target.dataset.action === "playback-stop") {
       stopAudioPlayback();
+      await stopNativeAudio();
       state.playbackStatus = "stopped";
       state.status = "Detenido";
       render();

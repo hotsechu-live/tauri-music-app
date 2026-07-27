@@ -4,6 +4,22 @@ export async function initDatabase() {
   return invoke("init_database");
 }
 
+export async function playNativeAudio(filePath: string) {
+  return invoke<string>("play_native_audio", { filePath });
+}
+
+export async function pauseNativeAudio() {
+  return invoke<string>("pause_native_audio");
+}
+
+export async function resumeNativeAudio() {
+  return invoke<string>("resume_native_audio");
+}
+
+export async function stopNativeAudio() {
+  return invoke<string>("stop_native_audio");
+}
+
 export async function selectMusicFolder(): Promise<string | null> {
   return invoke<string | null>("select_music_folder");
 }

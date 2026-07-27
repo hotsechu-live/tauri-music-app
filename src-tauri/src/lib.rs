@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf};
+use std::{fs, path::PathBuf, sync::Mutex};
 
 use chrono::Utc;
 use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
@@ -7,6 +7,63 @@ use serde::Serialize;
 use tauri::{command, AppHandle, Manager};
 use tauri_plugin_dialog::DialogExt;
 use walkdir::WalkDir;
+
+#[cfg(target_os = "windows")]
+use windows::{
+    core::HSTRING,
+    Foundation::Uri,
+    Media::{Core::MediaSource, Playback::MediaPlayer},
+};
+
+#[cfg(target_os = "windows")]
+struct NativeAudioPlayer {
+    player: Mutex<MediaPlayer>,
+}
+
+#[cfg(target_os = "windows")]
+impl NativeAudioPlayer {
+    fn new() -> Result<Self, String> {
+        MediaPlayer::new()
+            .map(|player| Self {
+                player: Mutex::new(player),
+            })
+            .map_err(|error| format!("No se pudo iniciar el reproductor de Windows: {error}"))
+    }
+
+    fn play(&self, file_path: &str) -> Result<(), String> {
+        let file_url = url::Url::from_file_path(file_path)
+            .map_err(|_| "La ruta del archivo no es válida para la reproducción.".to_string())?;
+        let uri = Uri::CreateUri(&HSTRING::from(file_url.as_str()))
+            .map_err(|error| format!("No se pudo abrir la ruta del audio: {error}"))?;
+        let source = MediaSource::CreateFromUri(&uri)
+            .map_err(|error| format!("Windows no pudo crear la fuente de audio: {error}"))?;
+        let player = self.player.lock().map_err(|_| "El reproductor está ocupado.".to_string())?;
+        player
+            .SetSource(&source)
+            .and_then(|_| player.Play())
+            .map_err(|error| format!("Windows no pudo reproducir el archivo: {error}"))
+    }
+
+    fn pause(&self) -> Result<(), String> {
+        self.player
+            .lock()
+            .map_err(|_| "El reproductor está ocupado.".to_string())?
+            .Pause()
+            .map_err(|error| format!("No se pudo pausar la reproducción: {error}"))
+    }
+
+    fn resume(&self) -> Result<(), String> {
+        self.player
+            .lock()
+            .map_err(|_| "El reproductor está ocupado.".to_string())?
+            .Play()
+            .map_err(|error| format!("No se pudo reanudar la reproducción: {error}"))
+    }
+
+    fn stop(&self) -> Result<(), String> {
+        self.pause()
+    }
+}
 
 #[derive(Debug, Serialize)]
 struct SongRecord {
@@ -171,6 +228,33 @@ fn allow_registered_collection_folders(app_handle: &AppHandle) -> Result<(), Str
 fn init_database() -> Result<String, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     init_schema(&conn).map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn play_native_audio(
+    player: tauri::State<'_, NativeAudioPlayer>,
+    file_path: String,
+) -> Result<String, String> {
+    player.play(&file_path)?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn pause_native_audio(player: tauri::State<'_, NativeAudioPlayer>) -> Result<String, String> {
+    player.pause()?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn resume_native_audio(player: tauri::State<'_, NativeAudioPlayer>) -> Result<String, String> {
+    player.resume()?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn stop_native_audio(player: tauri::State<'_, NativeAudioPlayer>) -> Result<String, String> {
+    player.stop()?;
     Ok("ok".to_string())
 }
 
@@ -588,10 +672,15 @@ pub fn run() {
         .setup(|app| {
             allow_registered_collection_folders(app.handle())
                 .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
+            app.manage(NativeAudioPlayer::new().map_err(Box::<dyn std::error::Error>::from)?);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             init_database,
+            play_native_audio,
+            pause_native_audio,
+            resume_native_audio,
+            stop_native_audio,
             select_music_folder,
             import_collection,
             list_songs,
