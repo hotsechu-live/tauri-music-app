@@ -64,25 +64,23 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas</button>
         <button class="menu-item ${state.activeView === "player" ? "active" : ""}" data-action="navigate" data-view="player">Reproductor</button>
         <button class="menu-item ${state.activeView === "metadata" ? "active" : ""}" data-action="navigate" data-view="metadata">Metadatos</button>
-        <button class="menu-item ${state.activeView === "configuration" ? "active" : ""}" data-action="navigate" data-view="configuration">Configuración</button>
         <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
       </nav>
 
-      <section class="panel ${state.activeView === "configuration" ? "" : "hidden"}">
-        <h2>Configuración inicial</h2>
-        <button id="import-btn">Seleccionar carpeta de música</button>
-        <div id="collection-form" class="${state.selectedFolder ? "" : "hidden"}">
-          <p><strong>Carpeta seleccionada:</strong> ${escapeHtml(state.selectedFolder || "Ninguna")}</p>
-          <label for="collection-name">Nombre de la colección</label>
-          <input id="collection-name" type="text" placeholder="Nombre de la colección" />
-          <button id="confirm-import-btn">Importar colección</button>
-        </div>
-        <div id="status">${escapeHtml(state.status)}</div>
-        ${state.error ? `<div class="error">${escapeHtml(state.error)}</div>` : ""}
-      </section>
-
       <section class="panel ${state.activeView === "collections" ? "" : "hidden"}">
-        <h2>Colecciones</h2>
+        <div class="collection-import">
+          <h3>Importar colección</h3>
+          <button id="import-btn">Seleccionar carpeta de música</button>
+          <div id="collection-form" class="${state.selectedFolder ? "" : "hidden"}">
+            <p><strong>Carpeta seleccionada:</strong> ${escapeHtml(state.selectedFolder || "Ninguna")}</p>
+            <label for="collection-name">Nombre de la colección</label>
+            <input id="collection-name" type="text" placeholder="Nombre de la colección" />
+            <button id="confirm-import-btn">Importar colección</button>
+          </div>
+          <div id="status">${escapeHtml(state.status)}</div>
+          ${state.error ? `<div class="error">${escapeHtml(state.error)}</div>` : ""}
+        </div>
+        <h3>Colecciones guardadas</h3>
         ${state.collections.length === 0 ? "<p>No hay colecciones todavía. Importa una carpeta para empezar.</p>" : `<ul class="collections-list">
           ${state.collections
             .map(

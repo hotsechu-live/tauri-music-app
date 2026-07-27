@@ -237,7 +237,7 @@ async function bootstrap() {
         return;
       }
       state.selectedFolder = folderPath;
-      state.status = `Carpeta seleccionada: ${folderPath}`;
+      state.status = "Carpeta lista para importar";
       state.error = null;
       render();
       setTimeout(() => {
@@ -249,10 +249,16 @@ async function bootstrap() {
 
     if (target.id === "confirm-import-btn") {
       const folderPath = state.selectedFolder;
-      const collectionName = (document.querySelector("#collection-name") as HTMLInputElement | null)?.value?.trim() || "Nueva colección";
+      const collectionName = (document.querySelector("#collection-name") as HTMLInputElement | null)?.value?.trim() ?? "";
 
       if (!folderPath) {
         state.error = "No hay carpeta seleccionada";
+        render();
+        return;
+      }
+
+      if (!collectionName) {
+        state.error = "Es necesario dar nombre a la colección";
         render();
         return;
       }

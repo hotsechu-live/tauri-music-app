@@ -93,6 +93,24 @@ button {
   margin-top: 0.5rem;
 }
 
+.collection-import {
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.collection-import h3 {
+  margin-top: 0;
+}
+
+#collection-form {
+  margin-top: 0.75rem;
+}
+
+#status {
+  margin-top: 0.5rem;
+}
+
 .filter-row,
 .action-row,
 .player-controls,

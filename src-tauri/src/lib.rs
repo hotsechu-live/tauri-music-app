@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf, sync::Mutex};
+use std::{
+    fs,
+    path::PathBuf,
+    sync::{Mutex, OnceLock},
+};
 
 use chrono::Utc;
 use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
@@ -101,10 +105,42 @@ struct CollectionRecord {
     created_at: String,
 }
 
-fn db_path() -> PathBuf {
-    let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    path.push("music_app.sqlite");
-    path
+static DATABASE_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+fn configure_database_path(app_handle: &AppHandle) -> Result<(), String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("No se pudo obtener el directorio de datos: {error}"))?;
+    fs::create_dir_all(&app_data_dir)
+        .map_err(|error| format!("No se pudo crear el directorio de datos: {error}"))?;
+
+    let database_path = app_data_dir.join("music_app.sqlite");
+
+    // Preserve databases created by versions that stored the file in the
+    // process working directory. The old file is intentionally left intact.
+    if !database_path.exists() {
+        if let Ok(legacy_path) = std::env::current_dir().map(|path| path.join("music_app.sqlite")) {
+            if legacy_path.is_file() && legacy_path != database_path {
+                fs::copy(&legacy_path, &database_path).map_err(|error| {
+                    format!(
+                        "No se pudo migrar la base de datos desde {}: {error}",
+                        legacy_path.display()
+                    )
+                })?;
+            }
+        }
+    }
+
+    DATABASE_PATH
+        .set(database_path)
+        .map_err(|_| "La ruta de la base de datos ya estaba configurada".to_string())
+}
+
+fn db_path() -> Result<&'static PathBuf> {
+    DATABASE_PATH
+        .get()
+        .ok_or_else(|| rusqlite::Error::InvalidPath(PathBuf::from("database path not configured")))
 }
 
 fn normalize_metadata_key(key: &str) -> String {
@@ -112,10 +148,7 @@ fn normalize_metadata_key(key: &str) -> String {
 }
 
 fn open_connection() -> Result<Connection> {
-    let path = db_path();
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
+    let path = db_path()?;
     let conn = Connection::open(path)?;
     conn.execute_batch("PRAGMA foreign_keys = ON;")?;
     Ok(conn)
@@ -670,6 +703,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
+            configure_database_path(app.handle())
+                .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
+            let connection =
+                open_connection().map_err(|error| Box::<dyn std::error::Error>::from(error))?;
+            init_schema(&connection)
+                .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
             allow_registered_collection_folders(app.handle())
                 .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
             app.manage(NativeAudioPlayer::new().map_err(Box::<dyn std::error::Error>::from)?);
