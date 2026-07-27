@@ -14,6 +14,8 @@ La aplicación debe tener las siguientes funcionalidades principales.
 1. Gestión de la colección de canciones
 2. Gestión de listas de música
 3. Reproducción de listas de música
+4. Reproducción de toda la música 
+5. Filtrado de las canciones a reproducir
 
 ### 1. Gestión de la colección de canciones
 La aplicación debe permitir seleccionar qué carpetas locales que contengan archivos de música deben de ser añadidas a la aplicación.
@@ -108,7 +110,13 @@ La aplicación debe mostrar claramente:
     • progreso de la canción actual
     • duración total de la canción actual
 
+### 4. Reproducción de toda la música
 Aparte de la reproducción de las listas, la aplicación deberá de permitir la reproducción secuencial o aleatoria de todas las canciones que se muestran en el listado de canciones, una vez aplicados los filtros que haya seleccionado el usuario.
+
+### 4. Filtrado de las canciones a reproducir
+En la parte superior del listado de músicas habrá un campo de búsqueda.
+Cuando se incluya un texto en dicho campo de búsqueda, se mostrarán en el listado las canciones en las cuales algunos de sus metadatos, tanto propios como personalizados, incluyan dicho texto. 
+A la derecha del campo se búsqueda habrá un desplegable con los valores: por defecto "Todos los campos", y a continuación el nombre de todos los metadatos disponibles, para que la búsqueda se restrinja solamente a ese campo. 
 
 ## Arquitectura esperada
 Propón e implementa una arquitectura limpia separando claramente frontend, backend y persistencia.
