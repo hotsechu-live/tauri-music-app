@@ -32,7 +32,7 @@ export type CustomMetadata = {
 
 export type PlaybackMode = "manual" | "sequential" | "shuffle";
 export type PlaybackStatus = "stopped" | "playing" | "paused";
-export type AppView = "collections" | "songs" | "metadata" | "playlists" | "player";
+export type AppView = "collections" | "songs" | "metadata" | "playlists";
 
 export type AppState = {
   activeView: AppView;
@@ -51,6 +51,7 @@ export type AppState = {
   selectedSongId: number | null;
   playbackQueue: Song[];
   playbackIndex: number;
+  playbackPlaylistId: number | null;
   playbackMode: PlaybackMode;
   playbackStatus: PlaybackStatus;
   currentPlaybackSongId: number | null;
@@ -78,6 +79,7 @@ export const createInitialState = (): AppState => ({
   selectedSongId: null,
   playbackQueue: [],
   playbackIndex: 0,
+  playbackPlaylistId: null,
   playbackMode: "manual",
   playbackStatus: "stopped",
   currentPlaybackSongId: null,

@@ -9,15 +9,6 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/'/g, "&#39;");
 }
 
-function formatDuration(seconds: number | null) {
-  if (!seconds || seconds <= 0) {
-    return "—";
-  }
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, "0")}`;
-}
-
 export function renderApp(state: AppState, root: HTMLElement) {
   const searchQuery = state.searchQuery.trim().toLowerCase();
   const filteredSongs = state.songs.filter((song) => {
@@ -55,6 +46,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
 
   const currentSong = state.playbackQueue[state.playbackIndex] ?? null;
   const currentPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId) ?? null;
+  const playbackPlaylist = state.playlists.find((playlist) => playlist.id === state.playbackPlaylistId) ?? null;
 
   root.innerHTML = `
     <section class="app-shell">
@@ -62,7 +54,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <button class="menu-item ${state.activeView === "songs" ? "active" : ""}" data-action="navigate" data-view="songs">Canciones</button>
         <button class="menu-item ${state.activeView === "collections" ? "active" : ""}" data-action="navigate" data-view="collections">Colecciones</button>
         <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas</button>
-        <button class="menu-item ${state.activeView === "player" ? "active" : ""}" data-action="navigate" data-view="player">Reproductor</button>
         <button class="menu-item ${state.activeView === "metadata" ? "active" : ""}" data-action="navigate" data-view="metadata">Metadatos</button>
         <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
       </nav>
@@ -97,7 +88,26 @@ export function renderApp(state: AppState, root: HTMLElement) {
         </ul>`}
       </section>
 
-      <section class="panel ${state.activeView === "songs" ? "" : "hidden"}">
+      <section class="panel player-bar ${state.activeView === "songs" ? "" : "hidden"}" aria-label="Reproductor">
+        <div class="player-song" title="${currentSong ? escapeHtml(currentSong.title) : "Sin canción seleccionada"}">
+          ${currentSong ? escapeHtml(currentSong.title) : "Sin canción"}
+        </div>
+        <div class="player-playlist" title="${playbackPlaylist ? escapeHtml(playbackPlaylist.name) : "Sin lista"}">
+          ${playbackPlaylist ? escapeHtml(playbackPlaylist.name) : "Sin lista"}
+        </div>
+        <div class="player-controls">
+          <button class="player-button" data-action="playback-prev" aria-label="Canción anterior" title="Canción anterior">&#10072;&#9664;</button>
+          <button class="player-button" data-action="playback-toggle" aria-label="${state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}" title="${state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}">${state.playbackStatus === "playing" ? "&#10074;&#10074;" : "&#9654;"}</button>
+          <button class="player-button" data-action="playback-next" aria-label="Canción siguiente" title="Canción siguiente">&#9654;&#10072;</button>
+        </div>
+        <select id="playback-mode" aria-label="Modo de reproducción" title="Modo de reproducción">
+          <option value="manual" ${state.playbackMode === "manual" ? "selected" : ""}>Reproducción individual</option>
+          <option value="sequential" ${state.playbackMode === "sequential" ? "selected" : ""}>Reproducción secuencial</option>
+          <option value="shuffle" ${state.playbackMode === "shuffle" ? "selected" : ""}>Reproducción aleatoria</option>
+        </select>
+      </section>
+
+      <section class="panel songs-panel ${state.activeView === "songs" ? "" : "hidden"}">
         <div class="filter-row songs-filter-row">
           <div class="search-input-row">
             <input id="song-search" type="search" value="${escapeHtml(state.pendingSearchQuery)}" placeholder="Buscar canciones" />
@@ -145,7 +155,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
             ${filteredSongs
               .map(
                 (song) => `
-                  <tr>
+                  <tr class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}" ${song.id === state.currentPlaybackSongId ? 'aria-current="true"' : ""}>
                     <td>${escapeHtml(song.title)}</td>
                     <td>${escapeHtml(song.artist)}</td>
                     <td>${escapeHtml(song.album)}</td>
@@ -235,29 +245,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ` : ""}
       </section>
 
-      <section class="panel ${state.activeView === "player" ? "" : "hidden"}">
-        <h2>Reproductor</h2>
-        <p><strong>Canción actual:</strong> ${currentSong ? escapeHtml(currentSong.title) : "Sin selección"}</p>
-        <p><strong>Lista actual:</strong> ${currentPlaylist ? escapeHtml(currentPlaylist.name) : "Sin lista"}</p>
-        <p><strong>Modo:</strong> ${state.playbackMode === "sequential" ? "Secuencial" : state.playbackMode === "shuffle" ? "Aleatorio" : "Manual"}</p>
-        <p><strong>Estado:</strong> ${state.playbackStatus === "playing" ? "Reproduciendo" : state.playbackStatus === "paused" ? "Pausado" : "Detenido"}</p>
-        <div class="progress-row">
-          <progress max="${state.currentPlaybackDuration || 1}" value="${state.currentPlaybackTime}" />
-          <span>${formatDuration(state.currentPlaybackTime)} / ${formatDuration(state.currentPlaybackDuration)}</span>
-        </div>
-        <div class="player-controls">
-          <button data-action="playback-prev">◀</button>
-          <button data-action="playback-toggle">${state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}</button>
-          <button data-action="playback-stop">■</button>
-          <button data-action="playback-next">▶</button>
-        </div>
-        <label for="playback-mode">Modo de reproducción</label>
-        <select id="playback-mode">
-          <option value="manual" ${state.playbackMode === "manual" ? "selected" : ""}>Manual</option>
-          <option value="sequential" ${state.playbackMode === "sequential" ? "selected" : ""}>Secuencial</option>
-          <option value="shuffle" ${state.playbackMode === "shuffle" ? "selected" : ""}>Aleatorio</option>
-        </select>
-      </section>
     </section>
   `;
 }

@@ -64,6 +64,42 @@ async function bootstrap() {
     return convertFileSrc(filePath);
   };
 
+  const getVisibleSongs = () => {
+    const searchQuery = state.searchQuery.trim().toLowerCase();
+    return state.songs.filter((song) => {
+      if (!searchQuery) {
+        return true;
+      }
+      const contains = (value: string) => value.toLowerCase().includes(searchQuery);
+      if (!state.searchField) {
+        return (
+          contains(song.title) ||
+          contains(song.artist) ||
+          contains(song.album) ||
+          contains(song.genre) ||
+          contains(song.year) ||
+          contains(song.collection_name)
+        );
+      }
+      switch (state.searchField) {
+        case "title":
+          return contains(song.title);
+        case "artist":
+          return contains(song.artist);
+        case "album":
+          return contains(song.album);
+        case "genre":
+          return contains(song.genre);
+        case "year":
+          return contains(song.year);
+        case "collection":
+          return contains(song.collection_name);
+        default:
+          return true;
+      }
+    });
+  };
+
   const playSongByIndex = async (index: number) => {
     const song = state.playbackQueue[index];
     if (!song) {
@@ -393,9 +429,10 @@ async function bootstrap() {
       const songId = Number(target.dataset.songId);
       const song = state.songs.find((entry) => entry.id === songId);
       if (song) {
-        state.playbackQueue = [song];
-        state.playbackIndex = 0;
-        await playSongByIndex(0);
+        state.playbackQueue = getVisibleSongs();
+        state.playbackIndex = state.playbackQueue.findIndex((entry) => entry.id === song.id);
+        state.playbackPlaylistId = null;
+        await playSongByIndex(state.playbackIndex);
       }
       return;
     }
@@ -476,6 +513,7 @@ async function bootstrap() {
       }
       state.playbackQueue = [...state.playlistSongs];
       state.playbackIndex = 0;
+      state.playbackPlaylistId = state.selectedPlaylistId;
       state.currentPlaybackSongId = state.playbackQueue[0]?.id ?? null;
       await playSongByIndex(0);
       return;
@@ -539,7 +577,12 @@ async function bootstrap() {
       if (!state.playbackQueue.length) {
         return;
       }
-      const nextIndex = (state.playbackIndex + 1) % state.playbackQueue.length;
+      let nextIndex = (state.playbackIndex + 1) % state.playbackQueue.length;
+      if (state.playbackMode === "shuffle" && state.playbackQueue.length > 1) {
+        do {
+          nextIndex = Math.floor(Math.random() * state.playbackQueue.length);
+        } while (nextIndex === state.playbackIndex);
+      }
       await playSongByIndex(nextIndex);
       return;
     }
@@ -585,40 +628,9 @@ async function bootstrap() {
     }
 
     if (target.id === "play-filtered-btn") {
-      state.playbackQueue = [...state.songs.filter((song) => {
-        const searchQuery = state.searchQuery.trim().toLowerCase();
-        if (!searchQuery) {
-          return true;
-        }
-        const contains = (value: string) => value.toLowerCase().includes(searchQuery);
-        if (!state.searchField) {
-          return (
-            contains(song.title) ||
-            contains(song.artist) ||
-            contains(song.album) ||
-            contains(song.genre) ||
-            contains(song.year) ||
-            contains(song.collection_name)
-          );
-        }
-        switch (state.searchField) {
-          case "title":
-            return contains(song.title);
-          case "artist":
-            return contains(song.artist);
-          case "album":
-            return contains(song.album);
-          case "genre":
-            return contains(song.genre);
-          case "year":
-            return contains(song.year);
-          case "collection":
-            return contains(song.collection_name);
-          default:
-            return true;
-        }
-      })];
+      state.playbackQueue = getVisibleSongs();
       state.playbackIndex = 0;
+      state.playbackPlaylistId = null;
       state.currentPlaybackSongId = state.playbackQueue[0]?.id ?? null;
       await playSongByIndex(0);
     }
