@@ -1,4 +1,4 @@
-import { initDatabase, selectMusicFolder, importCollection, listSongs, listCollections, createPlaylist, listPlaylists } from "./api.js";
+import { initDatabase, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, listPlaylists } from "./api.js";
 import { getInitialState, renderApp } from "./ui.js";
 
 async function bootstrap() {
@@ -108,10 +108,70 @@ async function bootstrap() {
       }
       return;
     }
+
+    if (target.dataset.action === "rename-collection") {
+      const collectionId = Number(target.dataset.id);
+      const collection = state.collections.find((c) => c.id === collectionId);
+      const currentName = collection?.name || "";
+      const newName = window.prompt("Nuevo nombre de la colección", currentName)?.trim();
+      if (!newName || newName === currentName) {
+        return;
+      }
+      try {
+        await renameCollection(collectionId, newName);
+        await refreshData();
+        state.error = null;
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+      }
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "delete-collection") {
+      const collectionId = Number(target.dataset.id);
+      const confirmed = window.confirm("¿Eliminar esta colección? Solo se borran los datos de la app, no los archivos.");
+      if (!confirmed) {
+        return;
+      }
+      try {
+        await deleteCollection(collectionId);
+        state.currentCollectionId = state.currentCollectionId === collectionId ? null : state.currentCollectionId;
+        await refreshData();
+        state.error = null;
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+      }
+      render();
+      return;
+    }
+  });
+
+  root.addEventListener("input", (event) => {
+    const target = event.target as HTMLInputElement | null;
+    if (!target) {
+      return;
+    }
+
+    if (target.id === "song-search") {
+      state.pendingSearchQuery = target.value;
+    }
+  });
+
+  root.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    if (target.id === "search-submit") {
+      state.searchQuery = state.pendingSearchQuery;
+      render();
+    }
   });
 
   root.addEventListener("change", async (event) => {
-    const target = event.target as HTMLSelectElement | null;
+    const target = event.target as HTMLSelectElement | HTMLInputElement | null;
     if (!target) {
       return;
     }
@@ -119,6 +179,11 @@ async function bootstrap() {
     if (target.id === "collection-filter") {
       state.currentCollectionId = target.value ? Number(target.value) : null;
       await refreshData();
+    }
+
+    if (target.id === "search-field") {
+      state.searchField = target.value;
+      render();
     }
   });
 }

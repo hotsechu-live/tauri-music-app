@@ -30,6 +30,9 @@ export type AppState = {
   playlists: Playlist[];
   collections: Collection[];
   currentCollectionId: number | null;
+  searchQuery: string;
+  pendingSearchQuery: string;
+  searchField: string;
   selectedFolder: string | null;
   status: string;
   error: string | null;
@@ -40,6 +43,9 @@ export const createInitialState = (): AppState => ({
   playlists: [],
   collections: [],
   currentCollectionId: null,
+  searchQuery: "",
+  pendingSearchQuery: "",
+  searchField: "",
   selectedFolder: null,
   status: "idle",
   error: null,

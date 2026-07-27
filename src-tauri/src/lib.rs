@@ -1,6 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use chrono::Utc;
+use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
 use tauri::{command, AppHandle};
@@ -48,7 +49,9 @@ fn open_connection() -> Result<Connection> {
     if let Some(parent) = path.parent() {
         let _ = fs::create_dir_all(parent);
     }
-    Connection::open(path)
+    let conn = Connection::open(path)?;
+    conn.execute_batch("PRAGMA foreign_keys = ON;")?;
+    Ok(conn)
 }
 
 fn init_schema(conn: &Connection) -> Result<()> {
@@ -182,12 +185,51 @@ fn import_collection(folder_path: String, collection_name: String) -> Result<ser
         }
 
         let metadata = fs::metadata(path).map_err(|e| e.to_string())?;
-        let title = path.file_stem().unwrap_or_default().to_string_lossy().to_string();
-        let artist = "".to_string();
-        let album = "".to_string();
-        let genre = "".to_string();
-        let year = "".to_string();
-        let duration_seconds: Option<i64> = None;
+        let track = Probe::open(path)
+            .and_then(|probe| probe.read())
+            .ok();
+
+        let title = track
+            .as_ref()
+            .and_then(|file| file.primary_tag().or_else(|| file.first_tag()))
+            .and_then(|tag| tag.title())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| path.file_stem().unwrap_or_default().to_string_lossy().to_string());
+
+        let artist = track
+            .as_ref()
+            .and_then(|file| file.primary_tag().or_else(|| file.first_tag()))
+            .and_then(|tag| tag.artist())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        let album = track
+            .as_ref()
+            .and_then(|file| file.primary_tag().or_else(|| file.first_tag()))
+            .and_then(|tag| tag.album())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        let genre = track
+            .as_ref()
+            .and_then(|file| file.primary_tag().or_else(|| file.first_tag()))
+            .and_then(|tag| tag.genre())
+            .map(|s| s.to_string())
+            .unwrap_or_default();
+
+        let year = track
+            .as_ref()
+            .and_then(|file| file.primary_tag().or_else(|| file.first_tag()))
+            .and_then(|tag| tag.year())
+            .map(|year| year.to_string())
+            .unwrap_or_default();
+
+        let duration_seconds: Option<i64> = track
+            .as_ref()
+            .map(|file| file.properties().duration().as_secs())
+            .filter(|secs| *secs > 0)
+            .map(|secs| secs as i64);
+
         let format = ext.to_uppercase();
         let file_size: Option<i64> = Some(metadata.len().try_into().unwrap_or_default());
         let file_path = path.to_string_lossy().to_string();
@@ -259,6 +301,28 @@ fn list_collections() -> Result<Vec<CollectionRecord>, String> {
         .map_err(|e| e.to_string())?;
 
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[command]
+fn rename_collection(collection_id: i64, new_name: String) -> Result<String, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE collections SET name = ?1 WHERE id = ?2",
+        params![new_name, collection_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn delete_collection(collection_id: i64) -> Result<String, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM collections WHERE id = ?1",
+        params![collection_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
 }
 
 #[command]
@@ -359,6 +423,8 @@ pub fn run() {
             import_collection,
             list_songs,
             list_collections,
+            rename_collection,
+            delete_collection,
             create_playlist,
             add_song_to_playlist,
             list_playlists,

@@ -23,6 +23,14 @@ export async function listCollections() {
   return invoke<any[]>("list_collections");
 }
 
+export async function renameCollection(collectionId: number, newName: string) {
+  return invoke<string>("rename_collection", { collectionId, newName });
+}
+
+export async function deleteCollection(collectionId: number) {
+  return invoke<string>("delete_collection", { collectionId });
+}
+
 export async function createPlaylist(name: string, description: string | null = null) {
   return invoke<number>("create_playlist", { name, description });
 }
