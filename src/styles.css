@@ -292,4 +292,5 @@ td {
 
 .song-actions {
   white-space: nowrap;
+  padding-right: 1rem;
 }

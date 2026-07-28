@@ -2,6 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, listSongCustomMetadata, setSongCustomMetadata, deleteSongCustomMetadata } from "./api.js";
 import { getInitialState, renderApp } from "./ui.js";
+import { filterSongs } from "./search.js";
 
 async function bootstrap() {
   const root = document.querySelector("#app") as HTMLElement | null;
@@ -65,39 +66,7 @@ async function bootstrap() {
   };
 
   const getVisibleSongs = () => {
-    const searchQuery = state.searchQuery.trim().toLowerCase();
-    return state.songs.filter((song) => {
-      if (!searchQuery) {
-        return true;
-      }
-      const contains = (value: string) => value.toLowerCase().includes(searchQuery);
-      if (!state.searchField) {
-        return (
-          contains(song.title) ||
-          contains(song.artist) ||
-          contains(song.album) ||
-          contains(song.genre) ||
-          contains(song.year) ||
-          contains(song.collection_name)
-        );
-      }
-      switch (state.searchField) {
-        case "title":
-          return contains(song.title);
-        case "artist":
-          return contains(song.artist);
-        case "album":
-          return contains(song.album);
-        case "genre":
-          return contains(song.genre);
-        case "year":
-          return contains(song.year);
-        case "collection":
-          return contains(song.collection_name);
-        default:
-          return true;
-      }
-    });
+    return filterSongs(state.songs, state.searchQuery, state.searchField);
   };
 
   const playSongByIndex = async (index: number) => {
@@ -605,6 +574,10 @@ async function bootstrap() {
 
     if (target.id === "song-search") {
       state.pendingSearchQuery = target.value;
+      if (!target.value) {
+        state.searchQuery = "";
+        render();
+      }
     }
 
     if (target.id === "song-metadata-key") {

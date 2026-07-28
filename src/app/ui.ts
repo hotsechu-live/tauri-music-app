@@ -1,4 +1,5 @@
 import { createInitialState, type AppState } from "./state.js";
+import { filterSongs } from "./search.js";
 
 function escapeHtml(value: string | null | undefined) {
   return (value ?? "")
@@ -10,41 +11,12 @@ function escapeHtml(value: string | null | undefined) {
 }
 
 export function renderApp(state: AppState, root: HTMLElement) {
-  const searchQuery = state.searchQuery.trim().toLowerCase();
-  const filteredSongs = state.songs.filter((song) => {
-    if (!searchQuery) {
-      return true;
-    }
-    const contains = (value: string) => value.toLowerCase().includes(searchQuery);
-    if (!state.searchField) {
-      return (
-        contains(song.title) ||
-        contains(song.artist) ||
-        contains(song.album) ||
-        contains(song.genre) ||
-        contains(song.year) ||
-        contains(song.collection_name)
-      );
-    }
-    switch (state.searchField) {
-      case "title":
-        return contains(song.title);
-      case "artist":
-        return contains(song.artist);
-      case "album":
-        return contains(song.album);
-      case "genre":
-        return contains(song.genre);
-      case "year":
-        return contains(song.year);
-      case "collection":
-        return contains(song.collection_name);
-      default:
-        return true;
-    }
-  });
+  const filteredSongs = filterSongs(state.songs, state.searchQuery, state.searchField);
 
   const currentSong = state.playbackQueue[state.playbackIndex] ?? null;
+  const currentSongText = currentSong
+    ? [currentSong.title.trim(), currentSong.artist.trim()].filter(Boolean).join(" - ")
+    : "";
   const currentPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId) ?? null;
   const playbackPlaylist = state.playlists.find((playlist) => playlist.id === state.playbackPlaylistId) ?? null;
 
@@ -89,8 +61,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
       </section>
 
       <section class="panel player-bar ${state.activeView === "songs" ? "" : "hidden"}" aria-label="Reproductor">
-        <div class="player-song" title="${currentSong ? escapeHtml(currentSong.title) : "Sin canción seleccionada"}">
-          ${currentSong ? escapeHtml(currentSong.title) : "Sin canción"}
+        <div class="player-song" title="${currentSong ? escapeHtml(currentSongText) : "Sin canción seleccionada"}">
+          ${currentSong ? escapeHtml(currentSongText) : "Sin canción"}
         </div>
         <div class="player-playlist" title="${playbackPlaylist ? escapeHtml(playbackPlaylist.name) : "Sin lista"}">
           ${playbackPlaylist ? escapeHtml(playbackPlaylist.name) : "Sin lista"}
@@ -142,13 +114,13 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ${filteredSongs.length === 0 ? "<p>No hay canciones visibles con los filtros actuales.</p>" : `<table>
           <thead>
             <tr>
+              <th></th>
               <th>Título</th>
               <th>Artista</th>
               <th>Álbum</th>
               <th>Género</th>
               <th>Colección</th>
               <th>Formato</th>
-              <th>Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -156,17 +128,17 @@ export function renderApp(state: AppState, root: HTMLElement) {
               .map(
                 (song) => `
                   <tr class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}" ${song.id === state.currentPlaybackSongId ? 'aria-current="true"' : ""}>
+                    <td class="song-actions">
+                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="Reproducir" title="Reproducir">&#9654;</button>
+                      <button class="icon-button" data-action="edit-song-metadata" data-song-id="${song.id}" aria-label="Editar metadatos" title="Editar metadatos">&#9998;</button>
+                      <button class="icon-button" data-action="add-song-to-playlist" data-song-id="${song.id}" aria-label="Añadir a una lista" title="Añadir a una lista">+</button>
+                    </td>
                     <td>${escapeHtml(song.title)}</td>
                     <td>${escapeHtml(song.artist)}</td>
                     <td>${escapeHtml(song.album)}</td>
                     <td>${escapeHtml(song.genre)}</td>
                     <td>${escapeHtml(song.collection_name)}</td>
                     <td>${escapeHtml(song.format)}</td>
-                    <td class="song-actions">
-                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="Reproducir" title="Reproducir">&#9654;</button>
-                      <button class="icon-button" data-action="edit-song-metadata" data-song-id="${song.id}" aria-label="Editar metadatos" title="Editar metadatos">&#9998;</button>
-                      <button class="icon-button" data-action="add-song-to-playlist" data-song-id="${song.id}" aria-label="Añadir a una lista" title="Añadir a una lista">+</button>
-                    </td>
                   </tr>
                 `,
               )

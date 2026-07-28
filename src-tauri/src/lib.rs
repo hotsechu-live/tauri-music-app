@@ -15,8 +15,8 @@ use walkdir::WalkDir;
 #[cfg(target_os = "windows")]
 use windows::{
     core::HSTRING,
-    Foundation::Uri,
     Media::{Core::MediaSource, Playback::MediaPlayer},
+    Storage::StorageFile,
 };
 
 #[cfg(target_os = "windows")]
@@ -35,11 +35,10 @@ impl NativeAudioPlayer {
     }
 
     fn play(&self, file_path: &str) -> Result<(), String> {
-        let file_url = url::Url::from_file_path(file_path)
-            .map_err(|_| "La ruta del archivo no es válida para la reproducción.".to_string())?;
-        let uri = Uri::CreateUri(&HSTRING::from(file_url.as_str()))
-            .map_err(|error| format!("No se pudo abrir la ruta del audio: {error}"))?;
-        let source = MediaSource::CreateFromUri(&uri)
+        let storage_file = StorageFile::GetFileFromPathAsync(&HSTRING::from(file_path))
+            .and_then(|operation| operation.get())
+            .map_err(|error| format!("Windows no pudo abrir el archivo de audio: {error}"))?;
+        let source = MediaSource::CreateFromStorageFile(&storage_file)
             .map_err(|error| format!("Windows no pudo crear la fuente de audio: {error}"))?;
         let player = self.player.lock().map_err(|_| "El reproductor está ocupado.".to_string())?;
         player
