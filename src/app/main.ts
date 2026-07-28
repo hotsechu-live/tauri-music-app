@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, listSongCustomMetadata, setSongCustomMetadata, deleteSongCustomMetadata } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs } from "./api.js";
 import { getInitialState, renderApp } from "./ui.js";
 import { filterSongs } from "./search.js";
 
@@ -70,20 +70,6 @@ async function bootstrap() {
       render();
     }
   }, 500);
-
-  const loadSongMetadata = async (songId: number) => {
-    try {
-      const metadata = await listSongCustomMetadata(songId);
-      state.selectedSongId = songId;
-      state.selectedSongMetadata = metadata;
-      state.metadataDraftKey = "";
-      state.metadataDraftValue = "";
-      render();
-    } catch (error) {
-      state.error = error instanceof Error ? error.message : String(error);
-      render();
-    }
-  };
 
   const stopAudioPlayback = () => {
     if (audioElement) {
@@ -427,7 +413,38 @@ async function bootstrap() {
 
     if (target.dataset.action === "edit-song-metadata") {
       const songId = Number(target.dataset.songId);
-      await loadSongMetadata(songId);
+      const song = state.songs.find((entry) => entry.id === songId);
+      if (!song) {
+        return;
+      }
+      try {
+        const label = `metadata-${songId}`;
+        const existingWindow = await WebviewWindow.getByLabel(label);
+        if (existingWindow) {
+          await existingWindow.show();
+          await existingWindow.setFocus();
+        } else {
+          const metadataWindow = new WebviewWindow(label, {
+            url: `metadata.html?songId=${songId}`,
+            title: `Metadatos · ${song.title}`,
+            width: 720,
+            height: 680,
+            minWidth: 560,
+            minHeight: 520,
+            center: true,
+          });
+          await metadataWindow.once("tauri://error", (error) => {
+            state.error = `No se pudo abrir el editor de metadatos: ${String(error.payload)}`;
+            render();
+          });
+          await metadataWindow.once("tauri://destroyed", () => {
+            void refreshData();
+          });
+        }
+      } catch (error) {
+        state.error = `No se pudo abrir el editor de metadatos: ${String(error)}`;
+        render();
+      }
       return;
     }
 
@@ -470,42 +487,6 @@ async function bootstrap() {
       try {
         await removeSongFromPlaylist(playlistId, songId);
         await refreshData();
-      } catch (error) {
-        state.error = error instanceof Error ? error.message : String(error);
-        render();
-      }
-      return;
-    }
-
-    if (target.dataset.action === "delete-song-metadata") {
-      const key = target.dataset.key;
-      if (!state.selectedSongId || !key) {
-        return;
-      }
-      try {
-        await deleteSongCustomMetadata(state.selectedSongId, key);
-        await loadSongMetadata(state.selectedSongId);
-      } catch (error) {
-        state.error = error instanceof Error ? error.message : String(error);
-        render();
-      }
-      return;
-    }
-
-    if (target.id === "save-song-metadata-btn") {
-      if (!state.selectedSongId) {
-        return;
-      }
-      const key = state.metadataDraftKey.trim();
-      const value = state.metadataDraftValue.trim();
-      if (!key) {
-        state.error = "La clave del metadato no puede estar vacía";
-        render();
-        return;
-      }
-      try {
-        await setSongCustomMetadata(state.selectedSongId, key, value);
-        await loadSongMetadata(state.selectedSongId);
       } catch (error) {
         state.error = error instanceof Error ? error.message : String(error);
         render();
@@ -648,13 +629,6 @@ async function bootstrap() {
       }
     }
 
-    if (target.id === "song-metadata-key") {
-      state.metadataDraftKey = target.value;
-    }
-
-    if (target.id === "song-metadata-value") {
-      state.metadataDraftValue = target.value;
-    }
   });
 
   root.addEventListener("click", async (event) => {

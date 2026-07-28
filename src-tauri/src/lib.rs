@@ -637,6 +637,29 @@ fn list_song_custom_metadata(song_id: i64) -> Result<Vec<CustomMetadataRecord>, 
 }
 
 #[command]
+fn update_song_metadata(
+    song_id: i64,
+    title: String,
+    artist: String,
+    album: String,
+    genre: String,
+    year: String,
+) -> Result<String, String> {
+    if title.trim().is_empty() {
+        return Err("El título no puede estar vacío".to_string());
+    }
+
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE songs SET title = ?1, artist = ?2, album = ?3, genre = ?4, year = ?5 WHERE id = ?6",
+        params![title.trim(), artist.trim(), album.trim(), genre.trim(), year.trim(), song_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok("ok".to_string())
+}
+
+#[command]
 fn set_song_custom_metadata(song_id: i64, key: String, value: String) -> Result<String, String> {
     let normalized_key = normalize_metadata_key(&key);
     if normalized_key.is_empty() {
@@ -756,6 +779,7 @@ pub fn run() {
             remove_song_from_playlist,
             reorder_playlist_songs,
             list_song_custom_metadata,
+            update_song_metadata,
             set_song_custom_metadata,
             delete_song_custom_metadata,
             list_playlists,

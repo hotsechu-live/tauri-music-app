@@ -32,7 +32,7 @@ export type CustomMetadata = {
 
 export type PlaybackMode = "manual" | "sequential" | "shuffle";
 export type PlaybackStatus = "stopped" | "playing" | "paused";
-export type AppView = "collections" | "songs" | "metadata" | "playlists";
+export type AppView = "collections" | "songs" | "playlists";
 
 export type AppState = {
   activeView: AppView;

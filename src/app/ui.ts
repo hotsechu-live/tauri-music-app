@@ -40,7 +40,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <button class="menu-item ${state.activeView === "songs" ? "active" : ""}" data-action="navigate" data-view="songs">Canciones</button>
         <button class="menu-item ${state.activeView === "collections" ? "active" : ""}" data-action="navigate" data-view="collections">Colecciones</button>
         <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas</button>
-        <button class="menu-item ${state.activeView === "metadata" ? "active" : ""}" data-action="navigate" data-view="metadata">Metadatos</button>
         <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
       </nav>
 
@@ -139,7 +138,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
               <th>Álbum</th>
               <th>Género</th>
               <th>Colección</th>
-              <th>Formato</th>
+              <th>Año</th>
             </tr>
           </thead>
           <tbody>
@@ -157,38 +156,13 @@ export function renderApp(state: AppState, root: HTMLElement) {
                     <td>${escapeHtml(song.album)}</td>
                     <td>${escapeHtml(song.genre)}</td>
                     <td>${escapeHtml(song.collection_name)}</td>
-                    <td>${escapeHtml(song.format)}</td>
+                    <td>${escapeHtml(song.year)}</td>
                   </tr>
                 `,
               )
               .join("")}
           </tbody>
         </table>`}
-      </section>
-
-      <section class="panel ${state.activeView === "metadata" ? "" : "hidden"}">
-        <h2>Metadatos personalizados</h2>
-        ${state.selectedSongId !== null && state.selectedSongId !== undefined ? `
-          ${(() => {
-            const selectedSong = state.songs.find((song) => song.id === state.selectedSongId) ?? null;
-            return selectedSong ? `
-              <p><strong>${escapeHtml(selectedSong.title)}</strong> · ${escapeHtml(selectedSong.artist)}</p>
-              <div class="metadata-editor">
-                <input id="song-metadata-key" type="text" placeholder="Clave" value="${escapeHtml(state.metadataDraftKey)}" />
-                <input id="song-metadata-value" type="text" placeholder="Valor" value="${escapeHtml(state.metadataDraftValue)}" />
-                <button id="save-song-metadata-btn">Guardar</button>
-              </div>
-              <ul class="collections-list">
-                ${state.selectedSongMetadata.map((metadata) => `
-                  <li>
-                    <span><strong>${escapeHtml(metadata.key)}</strong>: ${escapeHtml(metadata.value)}</span>
-                    <button data-action="delete-song-metadata" data-key="${escapeHtml(metadata.key)}">Eliminar</button>
-                  </li>
-                `).join("")}
-              </ul>
-            ` : "<p>Selecciona una canción para editar sus metadatos.</p>";
-          })()}
-        ` : "<p>Selecciona una canción para editar sus metadatos.</p>"}
       </section>
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">

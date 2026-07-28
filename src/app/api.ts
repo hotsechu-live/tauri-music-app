@@ -94,3 +94,10 @@ export async function setSongCustomMetadata(songId: number, key: string, value: 
 export async function deleteSongCustomMetadata(songId: number, key: string) {
   return invoke<string>("delete_song_custom_metadata", { songId, key });
 }
+
+export async function updateSongMetadata(
+  songId: number,
+  metadata: { title: string; artist: string; album: string; genre: string; year: string },
+) {
+  return invoke<string>("update_song_metadata", { songId, ...metadata });
+}
