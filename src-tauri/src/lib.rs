@@ -8,14 +8,14 @@ use chrono::Utc;
 use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
-use tauri::{command, AppHandle, Manager};
+use tauri::{command, AppHandle, Emitter, Manager};
 use tauri_plugin_dialog::DialogExt;
 use walkdir::WalkDir;
 
 #[cfg(target_os = "windows")]
 use windows::{
     core::HSTRING,
-    Foundation::TimeSpan,
+    Foundation::{TimeSpan, TypedEventHandler},
     Media::{Core::MediaSource, Playback::MediaPlayer},
     Storage::StorageFile,
 };
@@ -27,12 +27,20 @@ struct NativeAudioPlayer {
 
 #[cfg(target_os = "windows")]
 impl NativeAudioPlayer {
-    fn new() -> Result<Self, String> {
-        MediaPlayer::new()
-            .map(|player| Self {
-                player: Mutex::new(player),
-            })
-            .map_err(|error| format!("No se pudo iniciar el reproductor de Windows: {error}"))
+    fn new(app_handle: AppHandle) -> Result<Self, String> {
+        let player = MediaPlayer::new()
+            .map_err(|error| format!("No se pudo iniciar el reproductor de Windows: {error}"))?;
+        player
+            .MediaEnded(&TypedEventHandler::new(move |_, _| {
+                let _ = app_handle.emit("native-audio-ended", ());
+                Ok(())
+            }))
+            .map_err(|error| {
+                format!("No se pudo configurar el fin de la reproducción: {error}")
+            })?;
+        Ok(Self {
+            player: Mutex::new(player),
+        })
     }
 
     fn play(&self, file_path: &str) -> Result<(), String> {
@@ -928,7 +936,10 @@ pub fn run() {
                 .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
             allow_registered_collection_folders(app.handle())
                 .map_err(|error| Box::<dyn std::error::Error>::from(error))?;
-            app.manage(NativeAudioPlayer::new().map_err(Box::<dyn std::error::Error>::from)?);
+            app.manage(
+                NativeAudioPlayer::new(app.handle().clone())
+                    .map_err(Box::<dyn std::error::Error>::from)?,
+            );
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

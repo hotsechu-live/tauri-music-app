@@ -1,4 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs } from "./api.js";
 import { getInitialState, renderApp } from "./ui.js";
@@ -88,6 +89,38 @@ async function bootstrap() {
 
   const getVisibleSongs = () => {
     return filterSongs(state.songs, state.searchQuery, state.searchField);
+  };
+
+  const shuffled = <T>(entries: T[]) => {
+    const result = [...entries];
+    for (let index = result.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [result[index], result[randomIndex]] = [result[randomIndex], result[index]];
+    }
+    return result;
+  };
+
+  const reorderPendingPlayback = (mode: "sequential" | "shuffle") => {
+    const currentSong = state.playbackQueue[state.playbackIndex];
+    if (!currentSong) {
+      return;
+    }
+
+    const pendingSongIds = new Set(
+      state.playbackQueue
+        .slice(state.playbackIndex + 1)
+        .map((song) => song.id),
+    );
+    const sourceSongs = state.playbackPlaylistId === null
+      ? getVisibleSongs()
+      : state.playlistSongs;
+    const pendingSongs = sourceSongs.filter((song) => pendingSongIds.has(song.id));
+
+    state.playbackQueue = [
+      currentSong,
+      ...(mode === "shuffle" ? shuffled(pendingSongs) : pendingSongs),
+    ];
+    state.playbackIndex = 0;
   };
 
   const playSongByIndex = async (index: number) => {
@@ -207,6 +240,33 @@ async function bootstrap() {
     }
     await playSongByIndex(state.playbackIndex);
   };
+
+  const finishPlayback = () => {
+    state.playbackStatus = "stopped";
+    state.currentPlaybackTime = state.currentPlaybackDuration;
+    playbackStartOffset = state.currentPlaybackTime;
+    playbackStartedAt = 0;
+    state.status = "Reproducción finalizada";
+    render();
+  };
+
+  const handlePlaybackEnded = async () => {
+    if (state.playbackMode === "manual") {
+      finishPlayback();
+      return;
+    }
+
+    const nextIndex = state.playbackIndex + 1;
+    if (nextIndex < state.playbackQueue.length) {
+      await playSongByIndex(nextIndex);
+    } else {
+      finishPlayback();
+    }
+  };
+
+  await listen("native-audio-ended", () => {
+    void handlePlaybackEnded();
+  });
 
   render();
 
@@ -674,7 +734,8 @@ async function bootstrap() {
     }
 
     if (target.id === "play-filtered-btn") {
-      state.playbackQueue = getVisibleSongs();
+      const visibleSongs = getVisibleSongs();
+      state.playbackQueue = state.playbackMode === "shuffle" ? shuffled(visibleSongs) : visibleSongs;
       state.playbackIndex = 0;
       state.playbackPlaylistId = null;
       state.currentPlaybackSongId = state.playbackQueue[0]?.id ?? null;
@@ -699,7 +760,14 @@ async function bootstrap() {
     }
 
     if (target.id === "playback-mode") {
-      state.playbackMode = target.value as "manual" | "sequential" | "shuffle";
+      const nextMode = target.value as "manual" | "sequential" | "shuffle";
+      if (
+        nextMode !== "manual"
+        && nextMode !== state.playbackMode
+      ) {
+        reorderPendingPlayback(nextMode);
+      }
+      state.playbackMode = nextMode;
       state.status = `Modo de reproducción: ${state.playbackMode}`;
       render();
     }
