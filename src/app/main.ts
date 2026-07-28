@@ -1,6 +1,6 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, listSongCustomMetadata, setSongCustomMetadata, deleteSongCustomMetadata } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, listSongCustomMetadata, setSongCustomMetadata, deleteSongCustomMetadata } from "./api.js";
 import { getInitialState, renderApp } from "./ui.js";
 import { filterSongs } from "./search.js";
 
@@ -12,6 +12,8 @@ async function bootstrap() {
 
   const state = getInitialState();
   let audioElement: HTMLAudioElement | null = null;
+  let playbackStartedAt = 0;
+  let playbackStartOffset = 0;
 
   const refreshData = async () => {
     try {
@@ -35,6 +37,39 @@ async function bootstrap() {
   const render = () => {
     renderApp(state, root);
   };
+
+  const syncPlaybackTime = () => {
+    if (state.playbackStatus !== "playing" || playbackStartedAt === 0) {
+      return;
+    }
+
+    const elapsedSeconds = (performance.now() - playbackStartedAt) / 1000;
+    const duration = state.currentPlaybackDuration;
+    state.currentPlaybackTime = Math.min(
+      playbackStartOffset + elapsedSeconds,
+      duration > 0 ? duration : Number.POSITIVE_INFINITY,
+    );
+  };
+
+  const seekPlayback = async (seconds: number) => {
+    if (!state.currentPlaybackSongId || state.currentPlaybackDuration <= 0) {
+      return;
+    }
+
+    const nextTime = Math.min(Math.max(0, seconds), state.currentPlaybackDuration);
+    await seekNativeAudio(nextTime);
+    state.currentPlaybackTime = nextTime;
+    playbackStartOffset = nextTime;
+    playbackStartedAt = state.playbackStatus === "playing" ? performance.now() : 0;
+    render();
+  };
+
+  window.setInterval(() => {
+    if (state.playbackStatus === "playing") {
+      syncPlaybackTime();
+      render();
+    }
+  }, 500);
 
   const loadSongMetadata = async (songId: number) => {
     try {
@@ -80,6 +115,8 @@ async function bootstrap() {
     state.currentPlaybackTime = 0;
     state.currentPlaybackDuration = song.duration_seconds ?? 0;
     state.playbackStatus = "playing";
+    playbackStartOffset = 0;
+    playbackStartedAt = performance.now();
     state.status = `Reproduciendo ${song.title}`;
     render();
 
@@ -518,12 +555,17 @@ async function bootstrap() {
 
     if (target.dataset.action === "playback-toggle") {
       if (state.playbackStatus === "playing") {
+        syncPlaybackTime();
         await pauseNativeAudio();
         state.playbackStatus = "paused";
+        playbackStartOffset = state.currentPlaybackTime;
+        playbackStartedAt = 0;
         state.status = `Pausado`;
       } else if (state.playbackStatus === "paused") {
         await resumeNativeAudio();
         state.playbackStatus = "playing";
+        playbackStartOffset = state.currentPlaybackTime;
+        playbackStartedAt = performance.now();
         state.status = `Reproduciendo`;
       } else {
         await playCurrentSong();
@@ -537,6 +579,9 @@ async function bootstrap() {
       stopAudioPlayback();
       await stopNativeAudio();
       state.playbackStatus = "stopped";
+      state.currentPlaybackTime = 0;
+      playbackStartOffset = 0;
+      playbackStartedAt = 0;
       state.status = "Detenido";
       render();
       return;
@@ -563,6 +608,29 @@ async function bootstrap() {
       const prevIndex = (state.playbackIndex - 1 + state.playbackQueue.length) % state.playbackQueue.length;
       await playSongByIndex(prevIndex);
       return;
+    }
+
+    if (target.dataset.action === "playback-seek") {
+      const progress = target as HTMLProgressElement;
+      const bounds = progress.getBoundingClientRect();
+      if (bounds.width > 0) {
+        const ratio = (event.clientX - bounds.left) / bounds.width;
+        await seekPlayback(ratio * state.currentPlaybackDuration);
+      }
+      return;
+    }
+  });
+
+  root.addEventListener("keydown", async (event) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.dataset.action !== "playback-seek") {
+      return;
+    }
+
+    const step = event.shiftKey ? 30 : 5;
+    if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+      event.preventDefault();
+      await seekPlayback(state.currentPlaybackTime + (event.key === "ArrowRight" ? step : -step));
     }
   });
 

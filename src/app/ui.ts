@@ -10,6 +10,17 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/'/g, "&#39;");
 }
 
+function formatPlaybackTime(seconds: number) {
+  const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const remainingSeconds = safeSeconds % 60;
+
+  return hours > 0
+    ? `${hours}:${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+    : `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
+}
+
 export function renderApp(state: AppState, root: HTMLElement) {
   const filteredSongs = filterSongs(state.songs, state.searchQuery, state.searchField);
 
@@ -19,6 +30,9 @@ export function renderApp(state: AppState, root: HTMLElement) {
     : "";
   const currentPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId) ?? null;
   const playbackPlaylist = state.playlists.find((playlist) => playlist.id === state.playbackPlaylistId) ?? null;
+  const playbackDuration = Math.max(0, state.currentPlaybackDuration);
+  const playbackTime = Math.min(Math.max(0, state.currentPlaybackTime), playbackDuration || Infinity);
+  const playbackProgress = playbackDuration > 0 ? (playbackTime / playbackDuration) * 100 : 0;
 
   root.innerHTML = `
     <section class="app-shell">
@@ -77,6 +91,11 @@ export function renderApp(state: AppState, root: HTMLElement) {
           <option value="sequential" ${state.playbackMode === "sequential" ? "selected" : ""}>Reproducción secuencial</option>
           <option value="shuffle" ${state.playbackMode === "shuffle" ? "selected" : ""}>Reproducción aleatoria</option>
         </select>
+        <div class="playback-progress" aria-label="Progreso de la reproducción">
+          <time class="playback-time" datetime="PT${Math.floor(playbackTime)}S">${formatPlaybackTime(playbackTime)}</time>
+          <progress value="${playbackProgress}" max="100" data-action="playback-seek" tabindex="0" aria-label="Progreso de la pista. Pulsa para cambiar la posición" aria-valuetext="${formatPlaybackTime(playbackTime)} de ${formatPlaybackTime(playbackDuration)}">${Math.round(playbackProgress)}%</progress>
+          <time class="playback-time" datetime="PT${Math.floor(playbackDuration)}S">${formatPlaybackTime(playbackDuration)}</time>
+        </div>
       </section>
 
       <section class="panel songs-panel ${state.activeView === "songs" ? "" : "hidden"}">

@@ -20,6 +20,10 @@ export async function stopNativeAudio() {
   return invoke<string>("stop_native_audio");
 }
 
+export async function seekNativeAudio(seconds: number) {
+  return invoke<string>("seek_native_audio", { seconds });
+}
+
 export async function selectMusicFolder(): Promise<string | null> {
   return invoke<string | null>("select_music_folder");
 }

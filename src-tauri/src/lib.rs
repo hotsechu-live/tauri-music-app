@@ -15,6 +15,7 @@ use walkdir::WalkDir;
 #[cfg(target_os = "windows")]
 use windows::{
     core::HSTRING,
+    Foundation::TimeSpan,
     Media::{Core::MediaSource, Playback::MediaPlayer},
     Storage::StorageFile,
 };
@@ -65,6 +66,18 @@ impl NativeAudioPlayer {
 
     fn stop(&self) -> Result<(), String> {
         self.pause()
+    }
+
+    fn seek(&self, seconds: f64) -> Result<(), String> {
+        let position = TimeSpan {
+            Duration: (seconds.max(0.0) * 10_000_000.0) as i64,
+        };
+        self.player
+            .lock()
+            .map_err(|_| "El reproductor estÃ¡ ocupado.".to_string())?
+            .PlaybackSession()
+            .and_then(|session| session.SetPosition(position))
+            .map_err(|error| format!("No se pudo cambiar la posiciÃ³n de reproducciÃ³n: {error}"))
     }
 }
 
@@ -288,6 +301,16 @@ fn resume_native_audio(player: tauri::State<'_, NativeAudioPlayer>) -> Result<St
 fn stop_native_audio(player: tauri::State<'_, NativeAudioPlayer>) -> Result<String, String> {
     player.stop()?;
     Ok("ok".to_string())
+}
+
+#[cfg(target_os = "windows")]
+#[tauri::command]
+fn seek_native_audio(
+    player: tauri::State<'_, NativeAudioPlayer>,
+    seconds: f64,
+) -> Result<String, String> {
+    player.seek(seconds)?;
+    Ok("PosiciÃ³n de reproducciÃ³n actualizada".to_string())
 }
 
 #[command]
@@ -719,6 +742,7 @@ pub fn run() {
             pause_native_audio,
             resume_native_audio,
             stop_native_audio,
+            seek_native_audio,
             select_music_folder,
             import_collection,
             list_songs,
