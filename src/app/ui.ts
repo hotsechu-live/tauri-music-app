@@ -23,6 +23,9 @@ function formatPlaybackTime(seconds: number) {
 
 export function renderApp(state: AppState, root: HTMLElement) {
   const filteredSongs = filterSongs(state.songs, state.searchQuery, state.searchField);
+  const customMetadataKeys = [...new Set(
+    state.songs.flatMap((song) => song.custom_metadata.map((item) => item.key)),
+  )].sort((left, right) => left.localeCompare(right, "es"));
 
   const currentSong = state.playbackQueue[state.playbackIndex] ?? null;
   const currentSongText = currentSong
@@ -40,6 +43,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <button class="menu-item ${state.activeView === "songs" ? "active" : ""}" data-action="navigate" data-view="songs">Canciones</button>
         <button class="menu-item ${state.activeView === "collections" ? "active" : ""}" data-action="navigate" data-view="collections">Colecciones</button>
         <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas</button>
+        <button class="menu-item" data-action="open-metadata-manager">Metadatos</button>
         <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
       </nav>
 
@@ -111,6 +115,12 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <option value="genre" ${state.searchField === "genre" ? "selected" : ""}>Género</option>
             <option value="year" ${state.searchField === "year" ? "selected" : ""}>Año</option>
             <option value="collection" ${state.searchField === "collection" ? "selected" : ""}>Colección</option>
+            ${customMetadataKeys
+              .map((key) => {
+                const value = `custom:${key}`;
+                return `<option value="${escapeHtml(value)}" ${state.searchField === value ? "selected" : ""}>${escapeHtml(key)}</option>`;
+              })
+              .join("")}
           </select>
           <select id="collection-filter" aria-label="Filtrar por colección">
             <option value="">Mostrar todas las colecciones</option>

@@ -81,8 +81,8 @@ function render(message = "", isError = false) {
             <li data-key="${escapeHtml(item.key)}">
               <strong>${escapeHtml(item.key)}</strong>
               <input value="${escapeHtml(item.value)}" aria-label="Valor de ${escapeHtml(item.key)}">
-              <button type="button" data-action="save-custom">Guardar</button>
-              <button type="button" class="danger" data-action="delete-custom">Eliminar</button>
+              <button type="button" data-action="save-custom">Modificar</button>
+              <button type="button" class="danger" data-action="delete-custom">Borrar</button>
             </li>
           `).join("")}
         </ul>
@@ -136,7 +136,7 @@ root?.addEventListener("click", async (event) => {
       await setSongCustomMetadata(songId, key, row.querySelector<HTMLInputElement>("input")?.value ?? "");
     }
     await load();
-    render(button.dataset.action === "delete-custom" ? "Metadato eliminado." : "Metadato actualizado.");
+    render(button.dataset.action === "delete-custom" ? "Se ha borrado el valor del metadato." : "Metadato actualizado.");
   } catch (error) {
     render(error instanceof Error ? error.message : String(error), true);
   }

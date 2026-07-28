@@ -2,12 +2,13 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "about", "metadata-*"],
+  "windows": ["main", "about", "metadata-*", "metadata-manager"],
   "permissions": [
     "core:default",
     "core:webview:allow-create-webview-window",
     "core:window:allow-show",
     "core:window:allow-set-focus",
+    "dialog:default",
     "opener:default"
   ]
 }

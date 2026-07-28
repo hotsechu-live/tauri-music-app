@@ -448,6 +448,37 @@ async function bootstrap() {
       return;
     }
 
+    if (target.dataset.action === "open-metadata-manager") {
+      try {
+        const existingWindow = await WebviewWindow.getByLabel("metadata-manager");
+        if (existingWindow) {
+          await existingWindow.show();
+          await existingWindow.setFocus();
+        } else {
+          const metadataManagerWindow = new WebviewWindow("metadata-manager", {
+            url: "metadata-manager.html",
+            title: "Metadatos",
+            width: 620,
+            height: 560,
+            minWidth: 480,
+            minHeight: 420,
+            center: true,
+          });
+          await metadataManagerWindow.once("tauri://error", (error) => {
+            state.error = `No se pudo abrir la gestión de metadatos: ${String(error.payload)}`;
+            render();
+          });
+          await metadataManagerWindow.once("tauri://destroyed", () => {
+            void refreshData();
+          });
+        }
+      } catch (error) {
+        state.error = `No se pudo abrir la gestión de metadatos: ${String(error)}`;
+        render();
+      }
+      return;
+    }
+
     if (target.dataset.action === "play-song") {
       const songId = Number(target.dataset.songId);
       const song = state.songs.find((entry) => entry.id === songId);

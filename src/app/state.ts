@@ -10,6 +10,7 @@ export type Song = {
   format: string;
   file_size: number | null;
   file_path: string;
+  custom_metadata: CustomMetadata[];
 };
 
 export type Playlist = {

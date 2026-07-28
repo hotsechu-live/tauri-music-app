@@ -94,6 +94,7 @@ struct SongRecord {
     format: String,
     file_size: Option<i64>,
     file_path: String,
+    custom_metadata: Vec<CustomMetadataRecord>,
 }
 
 #[derive(Debug, Serialize)]
@@ -218,6 +219,10 @@ fn init_schema(conn: &Connection) -> Result<()> {
             UNIQUE(song_id, key)
         );
 
+        CREATE TABLE IF NOT EXISTS custom_metadata_definitions (
+            key TEXT PRIMARY KEY
+        );
+
         CREATE TABLE IF NOT EXISTS playlist_custom_metadata (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             playlist_id INTEGER NOT NULL,
@@ -240,6 +245,17 @@ fn init_schema(conn: &Connection) -> Result<()> {
     conn.execute(
         "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?1, ?2)",
         params!["default_playback_mode", "manual"],
+    )?;
+
+    conn.execute(
+        "INSERT OR IGNORE INTO custom_metadata_definitions (key)
+         SELECT DISTINCT key FROM song_custom_metadata",
+        [],
+    )?;
+    conn.execute(
+        "INSERT OR IGNORE INTO song_custom_metadata (song_id, key, value)
+         SELECT s.id, d.key, '' FROM songs s CROSS JOIN custom_metadata_definitions d",
+        [],
     )?;
 
     Ok(())
@@ -425,6 +441,15 @@ fn import_collection(
         )
         .map_err(|e| e.to_string())?;
 
+        conn.execute(
+            "INSERT OR IGNORE INTO song_custom_metadata (song_id, key, value)
+             SELECT s.id, d.key, '' FROM songs s
+             CROSS JOIN custom_metadata_definitions d
+             WHERE s.file_path = ?1",
+            params![file_path],
+        )
+        .map_err(|e| e.to_string())?;
+
         imported += 1;
     }
 
@@ -449,7 +474,30 @@ fn map_song_row(row: &rusqlite::Row) -> rusqlite::Result<SongRecord> {
         format: row.get(8)?,
         file_size: row.get(9)?,
         file_path: row.get(10)?,
+        custom_metadata: Vec::new(),
     })
+}
+
+fn attach_custom_metadata(conn: &Connection, songs: &mut [SongRecord]) -> Result<(), String> {
+    let mut stmt = conn
+        .prepare("SELECT key, value FROM song_custom_metadata WHERE song_id = ?1 ORDER BY key")
+        .map_err(|e| e.to_string())?;
+
+    for song in songs {
+        let rows = stmt
+            .query_map(params![song.id], |row| {
+                Ok(CustomMetadataRecord {
+                    key: row.get(0)?,
+                    value: row.get(1)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        song.custom_metadata = rows
+            .collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(|e| e.to_string())?;
+    }
+
+    Ok(())
 }
 
 #[command]
@@ -468,7 +516,12 @@ fn list_songs(collection_id: Option<i64>) -> Result<Vec<SongRecord>, String> {
     }
     .map_err(|e| e.to_string())?;
 
-    rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+    let mut songs = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    drop(stmt);
+    attach_custom_metadata(&conn, &mut songs)?;
+    Ok(songs)
 }
 
 #[command]
@@ -666,12 +719,25 @@ fn set_song_custom_metadata(song_id: i64, key: String, value: String) -> Result<
         return Err("La clave del metadato no puede estar vacía".to_string());
     }
 
-    let conn = open_connection().map_err(|e| e.to_string())?;
-    conn.execute(
+    let mut conn = open_connection().map_err(|e| e.to_string())?;
+    let transaction = conn.transaction().map_err(|e| e.to_string())?;
+    transaction.execute(
+        "INSERT OR IGNORE INTO custom_metadata_definitions (key) VALUES (?1)",
+        params![normalized_key],
+    )
+    .map_err(|e| e.to_string())?;
+    transaction.execute(
+        "INSERT OR IGNORE INTO song_custom_metadata (song_id, key, value)
+         SELECT id, ?1, '' FROM songs",
+        params![normalized_key],
+    )
+    .map_err(|e| e.to_string())?;
+    transaction.execute(
         "INSERT INTO song_custom_metadata (song_id, key, value) VALUES (?1, ?2, ?3) ON CONFLICT(song_id, key) DO UPDATE SET value = excluded.value",
         params![song_id, normalized_key, value],
     )
     .map_err(|e| e.to_string())?;
+    transaction.commit().map_err(|e| e.to_string())?;
 
     Ok("ok".to_string())
 }
@@ -681,7 +747,7 @@ fn delete_song_custom_metadata(song_id: i64, key: String) -> Result<String, Stri
     let normalized_key = normalize_metadata_key(&key);
     let conn = open_connection().map_err(|e| e.to_string())?;
     conn.execute(
-        "DELETE FROM song_custom_metadata WHERE song_id = ?1 AND key = ?2",
+        "UPDATE song_custom_metadata SET value = '' WHERE song_id = ?1 AND key = ?2",
         params![song_id, normalized_key],
     )
     .map_err(|e| e.to_string())?;
@@ -726,10 +792,116 @@ fn list_playlist_songs(playlist_id: i64) -> Result<Vec<SongRecord>, String> {
             format: row.get(8)?,
             file_size: row.get(9)?,
             file_path: row.get(10)?,
+            custom_metadata: Vec::new(),
         })
     }).map_err(|e| e.to_string())?;
 
+    let mut songs = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    drop(stmt);
+    attach_custom_metadata(&conn, &mut songs)?;
+    Ok(songs)
+}
+
+#[command]
+fn list_custom_metadata_definitions() -> Result<Vec<String>, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT key FROM custom_metadata_definitions ORDER BY key")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
     rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+}
+
+#[command]
+fn create_custom_metadata_definition(key: String) -> Result<String, String> {
+    let normalized_key = normalize_metadata_key(&key);
+    if normalized_key.is_empty() {
+        return Err("El nombre del metadato no puede estar vacío".to_string());
+    }
+    let mut conn = open_connection().map_err(|e| e.to_string())?;
+    let transaction = conn.transaction().map_err(|e| e.to_string())?;
+    let inserted = transaction
+        .execute(
+            "INSERT OR IGNORE INTO custom_metadata_definitions (key) VALUES (?1)",
+            params![normalized_key],
+        )
+        .map_err(|e| e.to_string())?;
+    if inserted == 0 {
+        return Err("Ya existe un metadato con ese nombre".to_string());
+    }
+    transaction
+        .execute(
+            "INSERT INTO song_custom_metadata (song_id, key, value)
+             SELECT id, ?1, '' FROM songs",
+            params![normalized_key],
+        )
+        .map_err(|e| e.to_string())?;
+    transaction.commit().map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn rename_custom_metadata_definition(old_key: String, new_key: String) -> Result<String, String> {
+    let old_key = normalize_metadata_key(&old_key);
+    let new_key = normalize_metadata_key(&new_key);
+    if new_key.is_empty() {
+        return Err("El nombre del metadato no puede estar vacío".to_string());
+    }
+    if old_key == new_key {
+        return Ok("ok".to_string());
+    }
+    let mut conn = open_connection().map_err(|e| e.to_string())?;
+    let transaction = conn.transaction().map_err(|e| e.to_string())?;
+    let exists: i64 = transaction
+        .query_row(
+            "SELECT COUNT(*) FROM custom_metadata_definitions WHERE key = ?1",
+            params![new_key],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    if exists > 0 {
+        return Err("Ya existe un metadato con ese nombre".to_string());
+    }
+    let updated = transaction
+        .execute(
+            "UPDATE custom_metadata_definitions SET key = ?1 WHERE key = ?2",
+            params![new_key, old_key],
+        )
+        .map_err(|e| e.to_string())?;
+    if updated == 0 {
+        return Err("No se ha encontrado el metadato".to_string());
+    }
+    transaction
+        .execute(
+            "UPDATE song_custom_metadata SET key = ?1 WHERE key = ?2",
+            params![new_key, old_key],
+        )
+        .map_err(|e| e.to_string())?;
+    transaction.commit().map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
+}
+
+#[command]
+fn delete_custom_metadata_definition(key: String) -> Result<String, String> {
+    let normalized_key = normalize_metadata_key(&key);
+    let mut conn = open_connection().map_err(|e| e.to_string())?;
+    let transaction = conn.transaction().map_err(|e| e.to_string())?;
+    transaction.execute(
+        "DELETE FROM song_custom_metadata WHERE key = ?1",
+        params![normalized_key],
+    )
+    .map_err(|e| e.to_string())?;
+    transaction.execute(
+        "DELETE FROM custom_metadata_definitions WHERE key = ?1",
+        params![normalized_key],
+    )
+    .map_err(|e| e.to_string())?;
+    transaction.commit().map_err(|e| e.to_string())?;
+    Ok("ok".to_string())
 }
 
 #[cfg(test)]
@@ -782,6 +954,10 @@ pub fn run() {
             update_song_metadata,
             set_song_custom_metadata,
             delete_song_custom_metadata,
+            list_custom_metadata_definitions,
+            create_custom_metadata_definition,
+            rename_custom_metadata_definition,
+            delete_custom_metadata_definition,
             list_playlists,
             list_playlist_songs
         ])

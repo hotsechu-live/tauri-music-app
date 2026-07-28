@@ -16,6 +16,13 @@ function getSearchTerms(query: string) {
 }
 
 function getSearchableValues(song: Song, searchField: string) {
+  if (searchField.startsWith("custom:")) {
+    const key = searchField.slice("custom:".length);
+    return song.custom_metadata
+      .filter((item) => item.key === key)
+      .map((item) => item.value);
+  }
+
   switch (searchField) {
     case "title":
       return [song.title];
@@ -37,6 +44,7 @@ function getSearchableValues(song: Song, searchField: string) {
         song.genre,
         song.year,
         song.collection_name,
+        ...song.custom_metadata.map((item) => item.value),
       ];
   }
 }

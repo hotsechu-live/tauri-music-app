@@ -95,6 +95,22 @@ export async function deleteSongCustomMetadata(songId: number, key: string) {
   return invoke<string>("delete_song_custom_metadata", { songId, key });
 }
 
+export async function listCustomMetadataDefinitions() {
+  return invoke<string[]>("list_custom_metadata_definitions");
+}
+
+export async function createCustomMetadataDefinition(key: string) {
+  return invoke<string>("create_custom_metadata_definition", { key });
+}
+
+export async function renameCustomMetadataDefinition(oldKey: string, newKey: string) {
+  return invoke<string>("rename_custom_metadata_definition", { oldKey, newKey });
+}
+
+export async function deleteCustomMetadataDefinition(key: string) {
+  return invoke<string>("delete_custom_metadata_definition", { key });
+}
+
 export async function updateSongMetadata(
   songId: number,
   metadata: { title: string; artist: string; album: string; genre: string; year: string },

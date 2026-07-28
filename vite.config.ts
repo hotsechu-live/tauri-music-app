@@ -11,6 +11,7 @@ export default defineConfig(async () => ({
       input: {
         main: resolve(__dirname, "index.html"),
         metadata: resolve(__dirname, "metadata.html"),
+        metadataManager: resolve(__dirname, "metadata-manager.html"),
       },
     },
   },
