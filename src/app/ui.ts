@@ -21,6 +21,38 @@ function formatPlaybackTime(seconds: number) {
     : `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
+export function updatePlaybackProgress(state: AppState, root: HTMLElement) {
+  const playbackDuration = Math.max(0, state.currentPlaybackDuration);
+  const playbackTime = Math.min(
+    Math.max(0, state.currentPlaybackTime),
+    playbackDuration || Infinity,
+  );
+  const playbackProgress = playbackDuration > 0
+    ? (playbackTime / playbackDuration) * 100
+    : 0;
+  const times = root.querySelectorAll<HTMLTimeElement>(".playback-time");
+  const progress = root.querySelector<HTMLProgressElement>(
+    '[data-action="playback-seek"]',
+  );
+
+  if (times[0]) {
+    times[0].dateTime = `PT${Math.floor(playbackTime)}S`;
+    times[0].textContent = formatPlaybackTime(playbackTime);
+  }
+  if (times[1]) {
+    times[1].dateTime = `PT${Math.floor(playbackDuration)}S`;
+    times[1].textContent = formatPlaybackTime(playbackDuration);
+  }
+  if (progress) {
+    progress.value = playbackProgress;
+    progress.textContent = `${Math.round(playbackProgress)}%`;
+    progress.setAttribute(
+      "aria-valuetext",
+      `${formatPlaybackTime(playbackTime)} de ${formatPlaybackTime(playbackDuration)}`,
+    );
+  }
+}
+
 export function renderApp(state: AppState, root: HTMLElement) {
   const filteredSongs = filterSongs(state.songs, state.searchQuery, state.searchField);
   const customMetadataKeys = [...new Set(
@@ -77,7 +109,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         </ul>`}
       </section>
 
-      <section class="panel player-bar ${state.activeView === "songs" ? "" : "hidden"}" aria-label="Reproductor">
+      <section class="panel player-bar ${state.activeView === "songs" || state.activeView === "playlists" ? "" : "hidden"}" aria-label="Reproductor">
         <div class="player-song" title="${currentSong ? escapeHtml(currentSongText) : "Sin canción seleccionada"}">
           ${currentSong ? escapeHtml(currentSongText) : "Sin canción"}
         </div>
@@ -177,29 +209,34 @@ export function renderApp(state: AppState, root: HTMLElement) {
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
         <h2>Listas</h2>
-        <button id="create-playlist-btn">Crear lista</button>
-        ${state.playlists.length === 0 ? "<p>No hay listas todavía. Crea una lista para empezar.</p>" : `<ul class="collections-list">
-          ${state.playlists
-            .map(
-              (playlist) => `
-                <li>
-                  <strong>${escapeHtml(playlist.name)}</strong>
-                  <span class="meta">${escapeHtml(playlist.description || "Sin descripción")}</span>
-                  <button data-action="select-playlist" data-id="${playlist.id}">Seleccionar</button>
-                  <button data-action="edit-playlist" data-id="${playlist.id}">Editar</button>
-                  <button data-action="delete-playlist" data-id="${playlist.id}">Eliminar</button>
-                </li>
-              `,
-            )
-            .join("")}
-        </ul>`}
+        <div class="playlist-toolbar">
+          <form id="create-playlist-form" class="playlist-create-form">
+            <label for="playlist-name">Crear una lista nueva</label>
+            <input id="playlist-name" name="name" required placeholder="Nombre de la lista" />
+            <input name="description" placeholder="Descripción (opcional)" />
+            <button type="submit">Crear lista</button>
+          </form>
+          <label class="playlist-selector" for="playlist-selector">
+            Lista seleccionada
+            <select id="playlist-selector" ${state.playlists.length === 0 ? "disabled" : ""}>
+              <option value="">Selecciona una lista</option>
+              ${state.playlists.map((playlist) => `
+                <option value="${playlist.id}" ${playlist.id === state.selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}</option>
+              `).join("")}
+            </select>
+          </label>
+        </div>
+        ${state.playlists.length === 0 ? "<p>No hay listas todavía. Crea una lista para empezar.</p>" : ""}
         ${currentPlaylist ? `
           <div class="playlist-detail">
             <h3>${escapeHtml(currentPlaylist.name)}</h3>
             <p>${escapeHtml(currentPlaylist.description || "Sin descripción")}</p>
             <div class="action-row">
               <button data-action="play-playlist">Reproducir lista</button>
+              <button data-action="edit-playlist" data-id="${currentPlaylist.id}">Editar</button>
+              <button data-action="delete-playlist" data-id="${currentPlaylist.id}">Eliminar</button>
             </div>
+            ${state.playlistSongs.length === 0 ? "<p>Esta lista todavía no contiene canciones.</p>" : ""}
             <ul class="playlist-songs">
               ${state.playlistSongs
                 .map(

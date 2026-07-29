@@ -287,6 +287,29 @@ button {
   gap: 0.5rem;
 }
 
+.playlist-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(14rem, 1fr);
+  gap: 1rem;
+  align-items: end;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.playlist-create-form {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(10rem, 1fr) auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.playlist-create-form label { grid-column: 1 / -1; font-weight: 600; }
+.playlist-selector { display: grid; gap: 0.35rem; font-weight: 600; }
+
+@media (max-width: 760px) {
+  .playlist-toolbar, .playlist-create-form { grid-template-columns: 1fr; }
+}
+
 .progress-row {
   display: flex;
   align-items: center;

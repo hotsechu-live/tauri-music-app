@@ -1,8 +1,8 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, addSongToPlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs } from "./api.js";
-import { getInitialState, renderApp } from "./ui.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs } from "./api.js";
+import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 
 async function bootstrap() {
@@ -68,7 +68,7 @@ async function bootstrap() {
   window.setInterval(() => {
     if (state.playbackStatus === "playing") {
       syncPlaybackTime();
-      render();
+      updatePlaybackProgress(state, root);
     }
   }, 500);
 
@@ -268,6 +268,11 @@ async function bootstrap() {
     void handlePlaybackEnded();
   });
 
+  await listen<{ playlistId: number }>("playlist-changed", (event) => {
+    state.selectedPlaylistId = event.payload.playlistId;
+    void refreshData();
+  });
+
   render();
 
   try {
@@ -370,22 +375,6 @@ async function bootstrap() {
       return;
     }
 
-    if (target.id === "create-playlist-btn") {
-      const name = window.prompt("Nombre de la lista")?.trim();
-      if (!name) {
-        return;
-      }
-      try {
-        await createPlaylist(name);
-        await refreshData();
-        state.error = null;
-      } catch (error) {
-        state.error = error instanceof Error ? error.message : String(error);
-        render();
-      }
-      return;
-    }
-
     if (target.dataset.action === "rename-collection") {
       const collectionId = Number(target.dataset.id);
       const collection = state.collections.find((c) => c.id === collectionId);
@@ -420,13 +409,6 @@ async function bootstrap() {
         state.error = error instanceof Error ? error.message : String(error);
       }
       render();
-      return;
-    }
-
-    if (target.dataset.action === "select-playlist") {
-      state.selectedPlaylistId = Number(target.dataset.id);
-      state.playlistSongs = [];
-      await refreshData();
       return;
     }
 
@@ -553,15 +535,29 @@ async function bootstrap() {
 
     if (target.dataset.action === "add-song-to-playlist") {
       const songId = Number(target.dataset.songId);
-      const playlistId = state.selectedPlaylistId;
-      if (!playlistId) {
-        state.error = "Selecciona una lista primero";
-        render();
-        return;
-      }
       try {
-        await addSongToPlaylist(playlistId, songId);
-        await refreshData();
+        const label = `add-to-playlist-${songId}`;
+        const existingWindow = await WebviewWindow.getByLabel(label);
+        if (existingWindow) {
+          await existingWindow.show();
+          await existingWindow.setFocus();
+        } else {
+          const playlistId = state.selectedPlaylistId
+            ? `&playlistId=${state.selectedPlaylistId}`
+            : "";
+          const playlistWindow = new WebviewWindow(label, {
+            url: `add-to-playlist.html?songId=${songId}${playlistId}`,
+            title: "Añadir a una lista",
+            width: 480,
+            height: 580,
+            resizable: false,
+            center: true,
+          });
+          await playlistWindow.once("tauri://error", (error) => {
+            state.error = `No se pudo abrir la ventana de listas: ${String(error.payload)}`;
+            render();
+          });
+        }
       } catch (error) {
         state.error = error instanceof Error ? error.message : String(error);
         render();
@@ -589,7 +585,9 @@ async function bootstrap() {
       if (!state.selectedPlaylistId) {
         return;
       }
-      state.playbackQueue = [...state.playlistSongs];
+      state.playbackQueue = state.playbackMode === "shuffle"
+        ? shuffled(state.playlistSongs)
+        : [...state.playlistSongs];
       state.playbackIndex = 0;
       state.playbackPlaylistId = state.selectedPlaylistId;
       state.currentPlaybackSongId = state.playbackQueue[0]?.id ?? null;
@@ -769,6 +767,35 @@ async function bootstrap() {
       }
       state.playbackMode = nextMode;
       state.status = `Modo de reproducción: ${state.playbackMode}`;
+      render();
+    }
+
+    if (target.id === "playlist-selector") {
+      state.selectedPlaylistId = target.value ? Number(target.value) : null;
+      state.playlistSongs = state.selectedPlaylistId
+        ? await listPlaylistSongs(state.selectedPlaylistId)
+        : [];
+      state.error = null;
+      render();
+    }
+  });
+
+  root.addEventListener("submit", async (event) => {
+    const form = event.target as HTMLFormElement | null;
+    if (form?.id !== "create-playlist-form") return;
+    event.preventDefault();
+    const data = new FormData(form);
+    const name = String(data.get("name") ?? "").trim();
+    const description = String(data.get("description") ?? "").trim() || null;
+    if (!name) return;
+    try {
+      state.selectedPlaylistId = await createPlaylist(name, description);
+      state.playlistSongs = [];
+      state.status = `Lista creada: ${name}`;
+      state.error = null;
+      await refreshData();
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : String(error);
       render();
     }
   });
