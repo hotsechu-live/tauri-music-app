@@ -384,6 +384,43 @@ fn select_music_folder(app_handle: AppHandle) -> Result<Option<String>, String> 
     }
 }
 
+fn normalize_collection_folder_path(folder_path: &str) -> String {
+    let trimmed = folder_path.trim();
+    let without_extended_prefix = trimmed.strip_prefix(r"\\?\").unwrap_or(trimmed);
+    let mut normalized = without_extended_prefix.replace('\\', "/");
+
+    if normalized.len() > 3 && normalized.ends_with('/') {
+        normalized.pop();
+    }
+
+    #[cfg(windows)]
+    {
+        normalized = normalized.to_lowercase();
+    }
+
+    normalized
+}
+
+fn find_collection_id_by_folder_path(
+    conn: &Connection,
+    folder_path: &str,
+) -> Result<Option<i64>, rusqlite::Error> {
+    let normalized_folder_path = normalize_collection_folder_path(folder_path);
+    let mut stmt = conn.prepare("SELECT id, folder_path FROM collections")?;
+    let rows = stmt.query_map([], |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+    })?;
+
+    for row in rows {
+        let (collection_id, stored_folder_path) = row?;
+        if normalize_collection_folder_path(&stored_folder_path) == normalized_folder_path {
+            return Ok(Some(collection_id));
+        }
+    }
+
+    Ok(None)
+}
+
 #[command]
 fn import_collection(
     app_handle: AppHandle,
@@ -393,17 +430,31 @@ fn import_collection(
     let conn = open_connection().map_err(|e| e.to_string())?;
     init_schema(&conn).map_err(|e| e.to_string())?;
 
+    let normalized_folder_path = normalize_collection_folder_path(
+        &fs::canonicalize(&folder_path)
+            .unwrap_or_else(|_| PathBuf::from(&folder_path))
+            .to_string_lossy()
+            .to_string(),
+    );
+
+    if find_collection_id_by_folder_path(&conn, &normalized_folder_path)
+        .map_err(|e| e.to_string())?
+        .is_some()
+    {
+        return Err("No se puede importar dos veces la misma carpeta de música.".to_string());
+    }
+
     let created_at = Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT OR IGNORE INTO collections (name, folder_path, created_at) VALUES (?1, ?2, ?3)",
-        params![collection_name, folder_path, created_at],
+        "INSERT INTO collections (name, folder_path, created_at) VALUES (?1, ?2, ?3)",
+        params![collection_name, normalized_folder_path, created_at],
     )
     .map_err(|e| e.to_string())?;
 
     let collection_id: i64 = conn
         .query_row(
             "SELECT id FROM collections WHERE name = ?1 AND folder_path = ?2",
-            params![collection_name, folder_path],
+            params![collection_name, normalized_folder_path],
             |row| row.get(0),
         )
         .map_err(|e| e.to_string())?;
@@ -977,11 +1028,48 @@ fn delete_custom_metadata_definition(key: String) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_metadata_key;
+    use super::{find_collection_id_by_folder_path, normalize_collection_folder_path, normalize_metadata_key};
+    use rusqlite::{params, Connection};
 
     #[test]
     fn normalize_metadata_key_trims_and_lowercases() {
         assert_eq!(normalize_metadata_key("  Comment  "), "comment");
+    }
+
+    #[test]
+    fn normalize_collection_folder_path_strips_windows_extended_prefix() {
+        assert_eq!(
+            normalize_collection_folder_path(r"\\?\C:\Users\hotse\Music"),
+            "c:/users/hotse/music"
+        );
+    }
+
+    #[test]
+    fn find_collection_id_by_folder_path_detects_existing_folder() {
+        let conn = Connection::open_in_memory().unwrap();
+        super::init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO collections (name, folder_path, created_at) VALUES (?1, ?2, ?3)",
+            params!["Mi colección", "C:/Music", "2026-01-01T00:00:00Z"],
+        )
+        .unwrap();
+
+        let existing_id = find_collection_id_by_folder_path(&conn, "C:/Music").unwrap();
+        assert_eq!(existing_id, Some(1));
+    }
+
+    #[test]
+    fn find_collection_id_by_folder_path_matches_backslashes_and_case_variations() {
+        let conn = Connection::open_in_memory().unwrap();
+        super::init_schema(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO collections (name, folder_path, created_at) VALUES (?1, ?2, ?3)",
+            params!["Mi colección", r"C:\Users\Hotse\Music", "2026-01-01T00:00:00Z"],
+        )
+        .unwrap();
+
+        let existing_id = find_collection_id_by_folder_path(&conn, "c:/users/hotse/music/").unwrap();
+        assert_eq!(existing_id, Some(1));
     }
 }
 

@@ -235,7 +235,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <select id="playlist-selector" aria-label="Lista seleccionada" ${state.playlists.length === 0 ? "disabled" : ""}>
               <option value="">Selecciona una lista</option>
               ${state.playlists.map((playlist) => `
-                <option value="${playlist.id}" ${playlist.id === state.selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}</option>
+                <option value="${playlist.id}" ${playlist.id === state.selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}${playlist.duration ? ` (${escapeHtml(playlist.duration)})` : ""}</option>
               `).join("")}
             </select>
           </div>
@@ -254,7 +254,10 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 <button type="button" class="icon-button danger" data-action="delete-playlist" data-id="${currentPlaylist.id}" aria-label="Eliminar lista" title="Eliminar lista">&#128465;</button>
               </div>
               <div class="playlist-header-text">
-                <h3>${escapeHtml(currentPlaylist.name)}</h3>
+                <div class="playlist-header-title-row">
+                  <h3>${escapeHtml(currentPlaylist.name)}</h3>
+                  <span class="playlist-duration">${escapeHtml(currentPlaylist.duration || "00:00:00")}</span>
+                </div>
                 <p class="playlist-description">${escapeHtml(currentPlaylist.description || "Sin descripción")}</p>
               </div>
             </div>

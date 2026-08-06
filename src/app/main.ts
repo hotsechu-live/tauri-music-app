@@ -404,12 +404,14 @@ async function bootstrap() {
 
       if (!folderPath) {
         state.error = "No hay carpeta seleccionada";
+        state.status = "";
         render();
         return;
       }
 
       if (!collectionName) {
         state.error = "Es necesario dar nombre a la colección";
+        state.status = "";
         render();
         return;
       }
@@ -418,7 +420,7 @@ async function bootstrap() {
         const result = await importCollection(folderPath, collectionName);
         if (result.imported === 0) {
           state.error = "No se importaron archivos de audio desde la carpeta seleccionada.";
-          state.status = "No se importaron canciones.";
+          state.status = "";
           render();
           return;
         }
@@ -428,6 +430,7 @@ async function bootstrap() {
         await refreshData();
       } catch (error) {
         state.error = error instanceof Error ? error.message : String(error);
+        state.status = "";
         render();
       }
       return;

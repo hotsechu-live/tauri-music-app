@@ -372,11 +372,25 @@ button {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
+}
+
+.playlist-header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .playlist-header h3 {
   margin: 0;
   font-size: 1.25rem;
+}
+
+.playlist-duration {
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
 }
 
 .playlist-description {

@@ -12,14 +12,14 @@ Hay que desarrollar una aplicación de escritorio local-first para gestionar y r
 La aplicación debe permitir gestionar una colección de canciones almacenadas en local en una o varias carpetas accesibles por la aplicación. Los archivos de música podrán estar en distintos formatos, como MP3, FLAC, OGG, WAV, M4A u otros formatos habituales.
 La aplicación debe tener las siguientes funcionalidades principales.
 1. Gestión de la colección de canciones
-2. Gestión de listas de música
+2. Creación y gestión de listas de música
 3. Reproducción de listas de música
-4. Reproducción de toda la música 
+4. Reproducción de toda la música o canciones sueltas
 5. Filtrado de las canciones a reproducir
 
 ### 1. Gestión de la colección de canciones
 La aplicación debe permitir seleccionar qué carpetas locales que contengan archivos de música deben de ser añadidas a la aplicación.
-Cada carpeta se corresponderá con lo que se conocerá como “Colección”. El sistema pedirá al usuario que dé el nombre de la colección al seleccionar la carpeta para su inclusión en el sistema.
+Cada carpeta se corresponderá con lo que se conocerá como “Colección”. El sistema pedirá al usuario que dé al menos el nombre de la colección al seleccionar la carpeta para su inclusión en el sistema.
 Si una carpeta del disco ha sido incluida como colección en la aplicación, no podrá volverse a incluir, salvo que se borre la colección y se importe de nuevo. 
 Se dispondrá de un gestor de colecciones donde se pondrá consultar los datos asociados a cada colección: nombre, fecha de inclusión, localización de la carpeta en el disco.
 El sistema solo permitirá cambiar el nombre de las colecciones.
@@ -39,7 +39,7 @@ Los metadatos originales de los archivos de música solo deben leerse. La aplica
 La información obtenida debe almacenarse en una base de datos SQLite local.
 La aplicación debe permitir crear metadatos personalizados asociados a cada canción. Estos metadatos no deben guardarse en el archivo de música, sino únicamente en la base de datos SQLite. 
 Tanto los metadatos propios de la canción como los personalizados deben poder darse de alta, modificarse y borrarse, pero este mantenimiento solo afectará a los datos guardados en la aplicación, los archivos de música en el disco se quedarán sin modificar.
-La aplicación debe permitir listar todas las canciones detectadas.
+La aplicación debe permitir listar todas las canciones importadas.
 El listado de canciones debe permitir buscar y filtrar canciones tanto por sus propios metadatos como por los metadatos personalizados. Los metadatos propios de cada canción que deben de permitir el filtrado serán:
     • colección
     • título
@@ -47,11 +47,6 @@ El listado de canciones debe permitir buscar y filtrar canciones tanto por sus p
     • álbum
     • género
     • año
-Los metadatos personalizados para filtrar las canciones serán:
-    • comentario
-    • etiquetas
-    • calificación personal
-    • número de reproducciones
 
  ### 2. Gestión de listas de música
 La aplicación debe permitir crear listas de música a partir de canciones seleccionadas en el listado principal.
@@ -73,10 +68,10 @@ Los metadatos personalizados para las listas serán:
     • etiquetas
     • comentario
     • fecha de creación
-    • última fecha de reproducción
     • duración estimada
 El orden de reproducción de las canciones de una lista debe ser fijo y debe quedar almacenado explícitamente en la base de datos.
 Cuando se cree o edite una lista, se debe poder definir el orden de las canciones. Este orden debe respetarse siempre durante la reproducción.
+
 ### 3. Reproducción de listas de música
 La aplicación debe permitir reproducir las canciones incluidas en una lista.
 La reproducción debe respetar el orden definido en la lista.
@@ -86,10 +81,10 @@ Modo manual canción a canción:
     • El usuario inicia la reproducción de una canción.
     • Cuando la canción termina, la reproducción se detiene.
     • La aplicación no debe iniciar automáticamente la siguiente canción.
-    • El usuario debe decidir manualmente si quiere reproducir la siguiente canción, repetir la actual, seleccionar otra canción o detener la reproducción.
+    • El usuario debe decidir manualmente si quiere reproducir la siguiente canción, repetir la actual o seleccionar otra canción.
 Modo secuencial:
     • El usuario selecciona una lista.
-    • El usuario inicia la reproducción.
+    • El usuario inicia la reproducción de la lista.
     • Cuando una canción termina, la aplicación debe iniciar automáticamente la siguiente canción de la lista.
     • La reproducción debe continuar hasta llegar al final de la lista o hasta que el usuario la detenga.
     • Al finalizar la última canción, la reproducción debe detenerse.
@@ -97,14 +92,13 @@ La aplicación debe permitir al menos estas acciones de reproducción:
     • reproducir
     • pausar
     • reanudar
-    • detener
     • avanzar a la siguiente canción
     • volver a la canción anterior
     • seleccionar una canción concreta de la lista
-    • cambiar entre modo manual y modo secuencial
+    • cambiar entre modo manual y modo secuencial en cualquier momento
 La aplicación debe mostrar claramente:
-    • canción actual
-    • lista actual
+    • canción actual en reproducción
+    • lista actual seleccionada
     • modo de reproducción activo
     • estado de reproducción: detenido, reproduciendo, pausado
     • progreso de la canción actual
@@ -159,6 +153,7 @@ La tabla lista_custom_metadata debe permitir asociar pares clave-valor a cada li
 La tabla lista_canciones debe relacionar listas con canciones e incluir el campo de posición para guardar el orden fijo de reproducción.
 La tabla app_settings debe guardar la configuración general, como el modo de reproducción por defecto y otras preferencias futuras.
 El esquema debe incluir claves primarias, claves foráneas, restricciones UNIQUE razonables, índices necesarios y borrados en cascada cuando corresponda.
+
 ## Comandos Tauri esperados
 Define los comandos Tauri necesarios para que el frontend pueda comunicarse con el backend Rust.
 Incluye comandos para:
