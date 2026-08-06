@@ -4,6 +4,7 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
+import type { Song } from "./state.js";
 
 async function bootstrap() {
   const root = document.querySelector("#app") as HTMLElement | null;
@@ -238,6 +239,34 @@ async function bootstrap() {
     if (!currentSong) {
       return;
     }
+    await playSongByIndex(state.playbackIndex);
+  };
+
+  const toggleSongPlayback = async (song: Song) => {
+    if (state.currentPlaybackSongId === song.id && state.playbackStatus === "playing") {
+      syncPlaybackTime();
+      await pauseNativeAudio();
+      state.playbackStatus = "paused";
+      playbackStartOffset = state.currentPlaybackTime;
+      playbackStartedAt = 0;
+      state.status = "Pausado";
+      render();
+      return;
+    }
+
+    if (state.currentPlaybackSongId === song.id && state.playbackStatus === "paused") {
+      await resumeNativeAudio();
+      state.playbackStatus = "playing";
+      playbackStartOffset = state.currentPlaybackTime;
+      playbackStartedAt = performance.now();
+      state.status = "Reproduciendo";
+      render();
+      return;
+    }
+
+    state.playbackQueue = getVisibleSongs();
+    state.playbackIndex = state.playbackQueue.findIndex((entry) => entry.id === song.id);
+    state.playbackPlaylistId = null;
     await playSongByIndex(state.playbackIndex);
   };
 
@@ -525,10 +554,7 @@ async function bootstrap() {
       const songId = Number(target.dataset.songId);
       const song = state.songs.find((entry) => entry.id === songId);
       if (song) {
-        state.playbackQueue = getVisibleSongs();
-        state.playbackIndex = state.playbackQueue.findIndex((entry) => entry.id === song.id);
-        state.playbackPlaylistId = null;
-        await playSongByIndex(state.playbackIndex);
+        await toggleSongPlayback(song);
       }
       return;
     }

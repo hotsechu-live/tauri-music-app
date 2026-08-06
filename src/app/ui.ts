@@ -189,7 +189,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 (song) => `
                   <tr class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}" ${song.id === state.currentPlaybackSongId ? 'aria-current="true"' : ""}>
                     <td class="song-actions">
-                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="Reproducir" title="Reproducir">&#9654;</button>
+                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}" title="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}">${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "&#10074;&#10074;" : "&#9654;"}</button>
                       <button class="icon-button" data-action="edit-song-metadata" data-song-id="${song.id}" aria-label="Editar metadatos" title="Editar metadatos">&#9998;</button>
                       <button class="icon-button" data-action="add-song-to-playlist" data-song-id="${song.id}" aria-label="Añadir a una lista" title="Añadir a una lista">+</button>
                     </td>
