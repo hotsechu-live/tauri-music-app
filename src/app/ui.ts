@@ -208,14 +208,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
       </section>
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
-        <h2>Listas</h2>
         <div class="playlist-toolbar">
-          <form id="create-playlist-form" class="playlist-create-form">
-            <label for="playlist-name">Crear una lista nueva</label>
-            <input id="playlist-name" name="name" required placeholder="Nombre de la lista" />
-            <input name="description" placeholder="Descripción (opcional)" />
-            <button type="submit">Crear lista</button>
-          </form>
           <label class="playlist-selector" for="playlist-selector">
             Lista seleccionada
             <select id="playlist-selector" ${state.playlists.length === 0 ? "disabled" : ""}>
@@ -225,28 +218,41 @@ export function renderApp(state: AppState, root: HTMLElement) {
               `).join("")}
             </select>
           </label>
+          <form id="create-playlist-form" class="playlist-create-form">
+            <input id="playlist-name" name="name" required placeholder="Nombre de la lista" />
+            <input name="description" placeholder="Descripción (opcional)" />
+            <button type="submit">Crear lista</button>
+          </form>
         </div>
         ${state.playlists.length === 0 ? "<p>No hay listas todavía. Crea una lista para empezar.</p>" : ""}
         ${currentPlaylist ? `
           <div class="playlist-detail">
-            <h3>${escapeHtml(currentPlaylist.name)}</h3>
-            <p>${escapeHtml(currentPlaylist.description || "Sin descripción")}</p>
-            <div class="action-row">
-              <button data-action="play-playlist">Reproducir lista</button>
-              <button data-action="edit-playlist" data-id="${currentPlaylist.id}">Editar</button>
-              <button data-action="delete-playlist" data-id="${currentPlaylist.id}">Eliminar</button>
+            <div class="playlist-header">
+              <div class="playlist-header-actions">
+                <button type="button" class="icon-button" data-action="play-playlist" aria-label="Reproducir lista" title="Reproducir lista">&#9654;</button>
+                <button type="button" class="icon-button" data-action="edit-playlist" data-id="${currentPlaylist.id}" aria-label="Editar lista" title="Editar lista">&#9998;</button>
+                <button type="button" class="icon-button danger" data-action="delete-playlist" data-id="${currentPlaylist.id}" aria-label="Eliminar lista" title="Eliminar lista">&#128465;</button>
+              </div>
+              <div class="playlist-header-text">
+                <h3>${escapeHtml(currentPlaylist.name)}</h3>
+                <p class="playlist-description">${escapeHtml(currentPlaylist.description || "Sin descripción")}</p>
+              </div>
             </div>
             ${state.playlistSongs.length === 0 ? "<p>Esta lista todavía no contiene canciones.</p>" : ""}
             <ul class="playlist-songs">
               ${state.playlistSongs
                 .map(
                   (song, index) => `
-                    <li>
-                      <span>${escapeHtml(song.title)} · ${escapeHtml(song.artist)}</span>
+                    <li class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}">
+                      <span class="playlist-song-order">${index + 1}</span>
+                      <div class="playlist-song-meta">
+                        <span class="song-title">${escapeHtml(song.title)}</span>
+                        <span class="song-details">${escapeHtml(song.artist)} · ${escapeHtml(song.album)}</span>
+                      </div>
                       <div class="inline-actions">
-                        <button data-action="playlist-move-up" data-index="${index}">↑</button>
-                        <button data-action="playlist-move-down" data-index="${index}">↓</button>
-                        <button data-action="remove-song-from-playlist" data-song-id="${song.id}">Quitar</button>
+                        <button type="button" class="icon-button" data-action="playlist-move-up" data-index="${index}" aria-label="Mover arriba" title="Mover arriba">↑</button>
+                        <button type="button" class="icon-button" data-action="playlist-move-down" data-index="${index}" aria-label="Mover abajo" title="Mover abajo">↓</button>
+                        <button type="button" class="icon-button danger" data-action="remove-song-from-playlist" data-song-id="${song.id}" aria-label="Quitar canción" title="Quitar canción">&#128465;</button>
                       </div>
                     </li>
                   `,
