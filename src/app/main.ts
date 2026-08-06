@@ -242,7 +242,7 @@ async function bootstrap() {
     await playSongByIndex(state.playbackIndex);
   };
 
-  const toggleSongPlayback = async (song: Song) => {
+  const toggleSongPlayback = async (song: Song, sourceSongs: Song[], playlistId: number | null = null) => {
     if (state.currentPlaybackSongId === song.id && state.playbackStatus === "playing") {
       syncPlaybackTime();
       await pauseNativeAudio();
@@ -264,9 +264,9 @@ async function bootstrap() {
       return;
     }
 
-    state.playbackQueue = getVisibleSongs();
+    state.playbackQueue = sourceSongs;
     state.playbackIndex = state.playbackQueue.findIndex((entry) => entry.id === song.id);
-    state.playbackPlaylistId = null;
+    state.playbackPlaylistId = playlistId;
     await playSongByIndex(state.playbackIndex);
   };
 
@@ -447,18 +447,20 @@ async function bootstrap() {
       if (!playlist) {
         return;
       }
-      const newName = window.prompt("Nuevo nombre de la lista", playlist.name)?.trim();
-      if (!newName || newName === playlist.name) {
-        return;
-      }
-      const newDescription = window.prompt("Nueva descripción de la lista", playlist.description || "")?.trim() || null;
-      try {
-        await updatePlaylist(playlistId, newName, newDescription);
-        await refreshData();
-      } catch (error) {
-        state.error = error instanceof Error ? error.message : String(error);
-        render();
-      }
+      state.playlistEditorOpen = true;
+      state.playlistEditorId = playlistId;
+      state.playlistEditorName = playlist.name;
+      state.playlistEditorDescription = playlist.description;
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "close-playlist-editor") {
+      state.playlistEditorOpen = false;
+      state.playlistEditorId = null;
+      state.playlistEditorName = "";
+      state.playlistEditorDescription = null;
+      render();
       return;
     }
 
@@ -554,7 +556,16 @@ async function bootstrap() {
       const songId = Number(target.dataset.songId);
       const song = state.songs.find((entry) => entry.id === songId);
       if (song) {
-        await toggleSongPlayback(song);
+        await toggleSongPlayback(song, getVisibleSongs());
+      }
+      return;
+    }
+
+    if (target.dataset.action === "play-playlist-song") {
+      const songId = Number(target.dataset.songId);
+      const song = state.playlistSongs.find((entry) => entry.id === songId);
+      if (song) {
+        await toggleSongPlayback(song, state.playlistSongs, state.selectedPlaylistId);
       }
       return;
     }
@@ -808,21 +819,47 @@ async function bootstrap() {
 
   root.addEventListener("submit", async (event) => {
     const form = event.target as HTMLFormElement | null;
-    if (form?.id !== "create-playlist-form") return;
-    event.preventDefault();
-    const data = new FormData(form);
-    const name = String(data.get("name") ?? "").trim();
-    const description = String(data.get("description") ?? "").trim() || null;
-    if (!name) return;
-    try {
-      state.selectedPlaylistId = await createPlaylist(name, description);
-      state.playlistSongs = [];
-      state.status = `Lista creada: ${name}`;
-      state.error = null;
-      await refreshData();
-    } catch (error) {
-      state.error = error instanceof Error ? error.message : String(error);
+    if (!form) return;
+    if (form.id === "create-playlist-form") {
+      event.preventDefault();
+      const data = new FormData(form);
+      const name = String(data.get("name") ?? "").trim();
+      const description = String(data.get("description") ?? "").trim() || null;
+      if (!name) return;
+      try {
+        state.selectedPlaylistId = await createPlaylist(name, description);
+        state.playlistSongs = [];
+        state.status = `Lista creada: ${name}`;
+        state.error = null;
+        await refreshData();
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+        render();
+      }
+      return;
+    }
+
+    if (form.id === "edit-playlist-form") {
+      event.preventDefault();
+      const playlistId = state.playlistEditorId;
+      if (!playlistId) return;
+      const data = new FormData(form);
+      const name = String(data.get("name") ?? "").trim();
+      const description = String(data.get("description") ?? "").trim() || null;
+      if (!name) return;
+      try {
+        await updatePlaylist(playlistId, name, description);
+        state.error = null;
+        await refreshData();
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+      }
+      state.playlistEditorOpen = false;
+      state.playlistEditorId = null;
+      state.playlistEditorName = "";
+      state.playlistEditorDescription = null;
       render();
+      return;
     }
   });
 }

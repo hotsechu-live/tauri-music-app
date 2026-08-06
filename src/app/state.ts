@@ -56,6 +56,10 @@ export type AppState = {
   playbackMode: PlaybackMode;
   playbackStatus: PlaybackStatus;
   currentPlaybackSongId: number | null;
+  playlistEditorOpen: boolean;
+  playlistEditorId: number | null;
+  playlistEditorName: string;
+  playlistEditorDescription: string | null;
   currentPlaybackTime: number;
   currentPlaybackDuration: number;
   selectedSongMetadata: CustomMetadata[];
@@ -81,6 +85,10 @@ export const createInitialState = (): AppState => ({
   playbackQueue: [],
   playbackIndex: 0,
   playbackPlaylistId: null,
+  playlistEditorOpen: false,
+  playlistEditorId: null,
+  playlistEditorName: "",
+  playlistEditorDescription: null,
   playbackMode: "manual",
   playbackStatus: "stopped",
   currentPlaybackSongId: null,

@@ -209,15 +209,14 @@ export function renderApp(state: AppState, root: HTMLElement) {
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
         <div class="playlist-toolbar">
-          <label class="playlist-selector" for="playlist-selector">
-            Lista seleccionada
-            <select id="playlist-selector" ${state.playlists.length === 0 ? "disabled" : ""}>
+          <div class="playlist-selector">
+            <select id="playlist-selector" aria-label="Lista seleccionada" ${state.playlists.length === 0 ? "disabled" : ""}>
               <option value="">Selecciona una lista</option>
               ${state.playlists.map((playlist) => `
                 <option value="${playlist.id}" ${playlist.id === state.selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}</option>
               `).join("")}
             </select>
-          </label>
+          </div>
           <form id="create-playlist-form" class="playlist-create-form">
             <input id="playlist-name" name="name" required placeholder="Nombre de la lista" />
             <input name="description" placeholder="Descripción (opcional)" />
@@ -229,7 +228,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
           <div class="playlist-detail">
             <div class="playlist-header">
               <div class="playlist-header-actions">
-                <button type="button" class="icon-button" data-action="play-playlist" aria-label="Reproducir lista" title="Reproducir lista">&#9654;</button>
                 <button type="button" class="icon-button" data-action="edit-playlist" data-id="${currentPlaylist.id}" aria-label="Editar lista" title="Editar lista">&#9998;</button>
                 <button type="button" class="icon-button danger" data-action="delete-playlist" data-id="${currentPlaylist.id}" aria-label="Eliminar lista" title="Eliminar lista">&#128465;</button>
               </div>
@@ -244,7 +242,10 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 .map(
                   (song, index) => `
                     <li class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}">
-                      <span class="playlist-song-order">${index + 1}</span>
+                      <div class="playlist-song-main">
+                        <button type="button" class="icon-button" data-action="play-playlist-song" data-song-id="${song.id}" aria-label="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}" title="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}">${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "&#10074;&#10074;" : "&#9654;"}</button>
+                        <span class="playlist-song-order">${index + 1}</span>
+                      </div>
                       <div class="playlist-song-meta">
                         <span class="song-title">${escapeHtml(song.title)}</span>
                         <span class="song-details">${escapeHtml(song.artist)} · ${escapeHtml(song.album)}</span>
@@ -263,6 +264,25 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ` : ""}
       </section>
 
+      <div class="modal-backdrop ${state.playlistEditorOpen ? "" : "hidden"}" data-action="close-playlist-editor">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-playlist-title" onclick="event.stopPropagation()">
+          <form id="edit-playlist-form" class="modal-form">
+            <h2 id="edit-playlist-title">Editar lista</h2>
+            <label>
+              Nombre
+              <input name="name" value="${escapeHtml(state.playlistEditorName)}" required />
+            </label>
+            <label>
+              Descripción
+              <input name="description" value="${escapeHtml(state.playlistEditorDescription)}" />
+            </label>
+            <div class="modal-actions">
+              <button type="button" class="secondary" data-action="close-playlist-editor">Cancelar</button>
+              <button type="submit">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </section>
   `;
 }
