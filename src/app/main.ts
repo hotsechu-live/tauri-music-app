@@ -314,6 +314,35 @@ async function bootstrap() {
     return;
   }
 
+  root.addEventListener("click", (event) => {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    if (target.dataset.action === "toggle-playlist-editor-maximize") {
+      state.playlistEditorMaximized = !state.playlistEditorMaximized;
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "close-playlist-editor") {
+      state.playlistEditorOpen = false;
+      state.playlistEditorId = null;
+      state.playlistEditorName = "";
+      state.playlistEditorDescription = null;
+      state.playlistEditorDescriptionExtended = null;
+      state.playlistEditorPurpose = null;
+      state.playlistEditorTags = null;
+      state.playlistEditorComment = null;
+      state.playlistEditorCreatedAt = null;
+      state.playlistEditorDuration = null;
+      state.playlistEditorMaximized = false;
+      render();
+      return;
+    }
+  }, true);
+
   root.addEventListener("click", async (event) => {
     const target = event.target as HTMLElement | null;
     if (!target) {
@@ -451,6 +480,19 @@ async function bootstrap() {
       state.playlistEditorId = playlistId;
       state.playlistEditorName = playlist.name;
       state.playlistEditorDescription = playlist.description;
+      state.playlistEditorDescriptionExtended = playlist.description_extended;
+      state.playlistEditorPurpose = playlist.purpose;
+      state.playlistEditorTags = playlist.tags;
+      state.playlistEditorComment = playlist.comment;
+      state.playlistEditorCreatedAt = playlist.created_at;
+      state.playlistEditorDuration = playlist.duration;
+      state.playlistEditorMaximized = false;
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "toggle-playlist-editor-maximize") {
+      state.playlistEditorMaximized = !state.playlistEditorMaximized;
       render();
       return;
     }
@@ -460,6 +502,13 @@ async function bootstrap() {
       state.playlistEditorId = null;
       state.playlistEditorName = "";
       state.playlistEditorDescription = null;
+      state.playlistEditorDescriptionExtended = null;
+      state.playlistEditorPurpose = null;
+      state.playlistEditorTags = null;
+      state.playlistEditorComment = null;
+      state.playlistEditorCreatedAt = null;
+      state.playlistEditorDuration = null;
+      state.playlistEditorMaximized = false;
       render();
       return;
     }
@@ -846,9 +895,13 @@ async function bootstrap() {
       const data = new FormData(form);
       const name = String(data.get("name") ?? "").trim();
       const description = String(data.get("description") ?? "").trim() || null;
+      const descriptionExtended = String(data.get("descriptionExtended") ?? "").trim() || null;
+      const purpose = String(data.get("purpose") ?? "").trim() || null;
+      const tags = String(data.get("tags") ?? "").trim() || null;
+      const comment = String(data.get("comment") ?? "").trim() || null;
       if (!name) return;
       try {
-        await updatePlaylist(playlistId, name, description);
+        await updatePlaylist(playlistId, name, description, descriptionExtended, purpose, tags, comment);
         state.error = null;
         await refreshData();
       } catch (error) {
@@ -858,6 +911,13 @@ async function bootstrap() {
       state.playlistEditorId = null;
       state.playlistEditorName = "";
       state.playlistEditorDescription = null;
+      state.playlistEditorDescriptionExtended = null;
+      state.playlistEditorPurpose = null;
+      state.playlistEditorTags = null;
+      state.playlistEditorComment = null;
+      state.playlistEditorCreatedAt = null;
+      state.playlistEditorDuration = null;
+      state.playlistEditorMaximized = false;
       render();
       return;
     }

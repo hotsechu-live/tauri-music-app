@@ -10,6 +10,28 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/'/g, "&#39;");
 }
 
+function formatPlaylistCreatedAt(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  const period = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) {
+    hours = 12;
+  }
+  return `${year}-${month}-${day} ${String(hours).padStart(2, "0")} : ${minutes} ${period}`.replace(" : ", ":");
+}
+
 function formatPlaybackTime(seconds: number) {
   const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
   const hours = Math.floor(safeSeconds / 3600);
@@ -265,17 +287,47 @@ export function renderApp(state: AppState, root: HTMLElement) {
       </section>
 
       <div class="modal-backdrop ${state.playlistEditorOpen ? "" : "hidden"}" data-action="close-playlist-editor">
-        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="edit-playlist-title" onclick="event.stopPropagation()">
+        <div class="modal${state.playlistEditorMaximized ? " maximized" : ""}" role="dialog" aria-modal="true" aria-labelledby="edit-playlist-title" onclick="event.stopPropagation()">
           <form id="edit-playlist-form" class="modal-form">
-            <h2 id="edit-playlist-title">Editar lista</h2>
+            <div class="modal-title-bar">
+              <h2 id="edit-playlist-title">Editar lista</h2>
+              <button type="button" class="icon-button" data-action="toggle-playlist-editor-maximize" aria-label="Alternar pantalla completa" title="Alternar pantalla completa">⛶</button>
+            </div>
             <label>
               Nombre
               <input name="name" value="${escapeHtml(state.playlistEditorName)}" required />
             </label>
             <label>
-              Descripción
+              Descripción corta
               <input name="description" value="${escapeHtml(state.playlistEditorDescription)}" />
             </label>
+            <label>
+              Descripción extendida
+              <textarea name="descriptionExtended">${escapeHtml(state.playlistEditorDescriptionExtended ?? "")}</textarea>
+            </label>
+            <label>
+              Finalidad
+              <input name="purpose" value="${escapeHtml(state.playlistEditorPurpose)}" />
+            </label>
+            <label>
+              Etiquetas
+              <input name="tags" placeholder="palabra1;palabra2" value="${escapeHtml(state.playlistEditorTags)}" />
+              <span class="field-hint">Introduce palabras clave separadas por <code>;</code>.</span>
+            </label>
+            <label>
+              Comentario
+              <textarea name="comment">${escapeHtml(state.playlistEditorComment ?? "")}</textarea>
+            </label>
+            <div class="modal-readonly-row">
+              <label>
+                Fecha de creación
+                <input value="${escapeHtml(formatPlaylistCreatedAt(state.playlistEditorCreatedAt))}" disabled />
+              </label>
+              <label>
+                Duración
+                <input value="${escapeHtml(state.playlistEditorDuration ?? "00:00:00")}" disabled />
+              </label>
+            </div>
             <div class="modal-actions">
               <button type="button" class="secondary" data-action="close-playlist-editor">Cancelar</button>
               <button type="submit">Guardar</button>

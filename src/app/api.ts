@@ -55,8 +55,24 @@ export async function createPlaylist(name: string, description: string | null = 
   return invoke<number>("create_playlist", { name, description });
 }
 
-export async function updatePlaylist(playlistId: number, name: string, description: string | null = null) {
-  return invoke<string>("update_playlist", { playlistId, name, description });
+export async function updatePlaylist(
+  playlistId: number,
+  name: string,
+  description: string | null = null,
+  descriptionExtended: string | null = null,
+  purpose: string | null = null,
+  tags: string | null = null,
+  comment: string | null = null,
+) {
+  return invoke<string>("update_playlist", {
+    playlistId,
+    name,
+    description,
+    descriptionExtended,
+    purpose,
+    tags,
+    comment,
+  });
 }
 
 export async function deletePlaylist(playlistId: number) {

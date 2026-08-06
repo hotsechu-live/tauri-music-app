@@ -17,6 +17,12 @@ export type Playlist = {
   id: number;
   name: string;
   description: string | null;
+  description_extended: string | null;
+  purpose: string | null;
+  tags: string | null;
+  comment: string | null;
+  created_at: string;
+  duration: string;
 };
 
 export type Collection = {
@@ -60,6 +66,13 @@ export type AppState = {
   playlistEditorId: number | null;
   playlistEditorName: string;
   playlistEditorDescription: string | null;
+  playlistEditorDescriptionExtended: string | null;
+  playlistEditorPurpose: string | null;
+  playlistEditorTags: string | null;
+  playlistEditorComment: string | null;
+  playlistEditorCreatedAt: string | null;
+  playlistEditorDuration: string | null;
+  playlistEditorMaximized: boolean;
   currentPlaybackTime: number;
   currentPlaybackDuration: number;
   selectedSongMetadata: CustomMetadata[];
@@ -89,6 +102,13 @@ export const createInitialState = (): AppState => ({
   playlistEditorId: null,
   playlistEditorName: "",
   playlistEditorDescription: null,
+  playlistEditorDescriptionExtended: null,
+  playlistEditorPurpose: null,
+  playlistEditorTags: null,
+  playlistEditorComment: null,
+  playlistEditorCreatedAt: null,
+  playlistEditorDuration: null,
+  playlistEditorMaximized: false,
   playbackMode: "manual",
   playbackStatus: "stopped",
   currentPlaybackSongId: null,

@@ -110,6 +110,12 @@ struct PlaylistRecord {
     id: i64,
     name: String,
     description: Option<String>,
+    description_extended: Option<String>,
+    purpose: Option<String>,
+    tags: Option<String>,
+    comment: Option<String>,
+    created_at: String,
+    duration: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -205,6 +211,10 @@ fn init_schema(conn: &Connection) -> Result<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             description TEXT,
+            description_extended TEXT,
+            purpose TEXT,
+            tags TEXT,
+            comment TEXT,
             created_at TEXT NOT NULL
         );
 
@@ -266,18 +276,38 @@ fn init_schema(conn: &Connection) -> Result<()> {
         [],
     )?;
 
+    ensure_playlist_columns(&conn)?;
     Ok(())
 }
 
-/// Makes the audio files of registered collections available to the Tauri
-/// asset protocol. The frontend can then load them in an HTML audio element
-/// without gaining access to unrelated folders on the machine.
+fn ensure_playlist_columns(conn: &Connection) -> Result<()> {
+    let mut stmt = conn.prepare("PRAGMA table_info('playlists')")?;
+    let columns: Vec<String> = stmt
+        .query_map([], |row| row.get(1))?
+        .collect::<Result<_, _>>()?;
+
+    if !columns.contains(&"description_extended".to_string()) {
+        conn.execute("ALTER TABLE playlists ADD COLUMN description_extended TEXT", [])?;
+    }
+    if !columns.contains(&"purpose".to_string()) {
+        conn.execute("ALTER TABLE playlists ADD COLUMN purpose TEXT", [])?;
+    }
+    if !columns.contains(&"tags".to_string()) {
+        conn.execute("ALTER TABLE playlists ADD COLUMN tags TEXT", [])?;
+    }
+    if !columns.contains(&"comment".to_string()) {
+        conn.execute("ALTER TABLE playlists ADD COLUMN comment TEXT", [])?;
+    }
+
+    Ok(())
+}
+
 fn allow_registered_collection_folders(app_handle: &AppHandle) -> Result<(), String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
-    let mut statement = conn
+    let mut stmt = conn
         .prepare("SELECT folder_path FROM collections")
         .map_err(|e| e.to_string())?;
-    let folders = statement
+    let folders = stmt
         .query_map([], |row| row.get::<_, String>(0))
         .map_err(|e| e.to_string())?
         .collect::<Result<Vec<_>, _>>()
@@ -590,11 +620,19 @@ fn create_playlist(name: String, description: Option<String>) -> Result<i64, Str
 }
 
 #[command]
-fn update_playlist(playlist_id: i64, name: String, description: Option<String>) -> Result<String, String> {
+fn update_playlist(
+    playlist_id: i64,
+    name: String,
+    description: Option<String>,
+    description_extended: Option<String>,
+    purpose: Option<String>,
+    tags: Option<String>,
+    comment: Option<String>,
+) -> Result<String, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE playlists SET name = ?1, description = ?2 WHERE id = ?3",
-        params![name, description, playlist_id],
+        "UPDATE playlists SET name = ?1, description = ?2, description_extended = ?3, purpose = ?4, tags = ?5, comment = ?6 WHERE id = ?7",
+        params![name, description, description_extended, purpose, tags, comment, playlist_id],
     )
     .map_err(|e| e.to_string())?;
     Ok("ok".to_string())
@@ -766,7 +804,26 @@ fn delete_song_custom_metadata(song_id: i64, key: String) -> Result<String, Stri
 fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     let mut stmt = conn
-        .prepare("SELECT id, name, description FROM playlists ORDER BY name")
+        .prepare(
+            "SELECT p.id,
+                    p.name,
+                    p.description,
+                    p.description_extended,
+                    p.purpose,
+                    p.tags,
+                    p.comment,
+                    p.created_at,
+                    printf('%02d:%02d:%02d',
+                        COALESCE(SUM(COALESCE(s.duration_seconds, 0)), 0) / 3600,
+                        (COALESCE(SUM(COALESCE(s.duration_seconds, 0)), 0) / 60) % 60,
+                        COALESCE(SUM(COALESCE(s.duration_seconds, 0)), 0) % 60
+                    ) as duration
+             FROM playlists p
+             LEFT JOIN playlist_songs ps ON p.id = ps.playlist_id
+             LEFT JOIN songs s ON ps.song_id = s.id
+             GROUP BY p.id
+             ORDER BY p.name",
+        )
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], |row| {
@@ -774,6 +831,12 @@ fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 description: row.get(2)?,
+                description_extended: row.get(3)?,
+                purpose: row.get(4)?,
+                tags: row.get(5)?,
+                comment: row.get(6)?,
+                created_at: row.get(7)?,
+                duration: row.get(8)?,
             })
         })
         .map_err(|e| e.to_string())?;
