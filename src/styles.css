@@ -336,13 +336,6 @@ button {
   min-width: 15rem;
 }
 
-.playlist-create-form {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, auto) auto;
-  gap: 0.5rem;
-  align-items: end;
-}
-
 .playlist-detail {
   border: 1px solid transparent;
   border-radius: 0.75rem;
@@ -434,8 +427,7 @@ button {
 }
 
 @media (max-width: 760px) {
-  .playlist-toolbar, .playlist-create-form {
-    grid-template-columns: 1fr;
+  .playlist-toolbar {
     width: 100%;
   }
 
@@ -598,6 +590,12 @@ button.secondary {
   font-size: 1rem;
   font-weight: 400;
   line-height: 1.5;
+}
+
+.playlist-creator-modal {
+  width: min(100%, 520px);
+  min-height: 0;
+  resize: none;
 }
 
 .modal-form textarea {

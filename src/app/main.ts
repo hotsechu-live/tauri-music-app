@@ -58,6 +58,40 @@ async function bootstrap() {
     );
   };
 
+  const playlistCreatorHasUnsavedChanges = () => {
+    const form = root.querySelector<HTMLFormElement>("#create-playlist-form");
+    if (!form || !state.playlistCreatorOpen) {
+      return false;
+    }
+
+    const data = new FormData(form);
+    return (
+      String(data.get("name") ?? "") !== "" ||
+      String(data.get("description") ?? "") !== ""
+    );
+  };
+
+  const closePlaylistCreator = async (confirmUnsavedChanges = true) => {
+    if (confirmUnsavedChanges && playlistCreatorHasUnsavedChanges()) {
+      const discardChanges = await confirm(
+        "Hay cambios sin guardar. ¿Quieres cerrar la ventana y descartarlos?",
+        {
+          title: "Cambios sin guardar",
+          kind: "warning",
+          okLabel: "Cerrar sin guardar",
+          cancelLabel: "Volver a la edición",
+        },
+      );
+      if (!discardChanges) {
+        return false;
+      }
+    }
+
+    state.playlistCreatorOpen = false;
+    render();
+    return true;
+  };
+
   const closePlaylistEditor = async (confirmUnsavedChanges = true) => {
     if (confirmUnsavedChanges && playlistEditorHasUnsavedChanges()) {
       const discardChanges = await confirm(
@@ -380,6 +414,12 @@ async function bootstrap() {
       await closePlaylistEditor();
       return;
     }
+
+    if (target.dataset.action === "close-playlist-creator") {
+      event.stopImmediatePropagation();
+      await closePlaylistCreator();
+      return;
+    }
   }, true);
 
   root.addEventListener("click", async (event) => {
@@ -391,6 +431,13 @@ async function bootstrap() {
     if (target.dataset.action === "navigate") {
       state.activeView = target.dataset.view as typeof state.activeView;
       render();
+      return;
+    }
+
+    if (target.dataset.action === "open-playlist-creator") {
+      state.playlistCreatorOpen = true;
+      render();
+      root.querySelector<HTMLInputElement>("#playlist-name")?.focus();
       return;
     }
 
@@ -898,6 +945,7 @@ async function bootstrap() {
       try {
         state.selectedPlaylistId = await createPlaylist(name, description);
         state.playlistSongs = [];
+        state.playlistCreatorOpen = false;
         state.status = `Lista creada: ${name}`;
         state.error = null;
         await refreshData();

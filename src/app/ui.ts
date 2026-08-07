@@ -239,11 +239,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
               `).join("")}
             </select>
           </div>
-          <form id="create-playlist-form" class="playlist-create-form">
-            <input id="playlist-name" name="name" required placeholder="Nombre de la lista" />
-            <input name="description" placeholder="Descripción (opcional)" />
-            <button type="submit">Crear lista</button>
-          </form>
+          <button type="button" data-action="open-playlist-creator">Nueva lista</button>
         </div>
         ${state.playlists.length === 0 ? "<p>No hay listas todavía. Crea una lista para empezar.</p>" : ""}
         ${currentPlaylist ? `
@@ -288,6 +284,28 @@ export function renderApp(state: AppState, root: HTMLElement) {
           </div>
         ` : ""}
       </section>
+
+      <div class="modal-backdrop ${state.playlistCreatorOpen ? "" : "hidden"}" data-action="close-playlist-creator">
+        <div class="modal playlist-creator-modal" role="dialog" aria-modal="true" aria-labelledby="create-playlist-title" onclick="event.stopPropagation()">
+          <form id="create-playlist-form" class="modal-form">
+            <div class="modal-title-bar">
+              <h2 id="create-playlist-title">Nueva lista</h2>
+            </div>
+            <label>
+              Nombre
+              <input id="playlist-name" name="name" required autofocus />
+            </label>
+            <label>
+              Descripción
+              <input name="description" />
+            </label>
+            <div class="modal-actions">
+              <button type="button" class="secondary" data-action="close-playlist-creator">Cancelar</button>
+              <button type="submit">Crear lista</button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <div class="modal-backdrop ${state.playlistEditorOpen ? "" : "hidden"}" data-action="close-playlist-editor">
         <div class="modal${state.playlistEditorMaximized ? " maximized" : ""}" role="dialog" aria-modal="true" aria-labelledby="edit-playlist-title" onclick="event.stopPropagation()">
