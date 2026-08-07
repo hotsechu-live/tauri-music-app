@@ -1,6 +1,7 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
+import { confirm } from "@tauri-apps/plugin-dialog";
 import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
@@ -38,6 +39,54 @@ async function bootstrap() {
 
   const render = () => {
     renderApp(state, root);
+  };
+
+  const playlistEditorHasUnsavedChanges = () => {
+    const form = root.querySelector<HTMLFormElement>("#edit-playlist-form");
+    if (!form || !state.playlistEditorOpen) {
+      return false;
+    }
+
+    const data = new FormData(form);
+    return (
+      String(data.get("name") ?? "") !== state.playlistEditorName ||
+      String(data.get("description") ?? "") !== (state.playlistEditorDescription ?? "") ||
+      String(data.get("descriptionExtended") ?? "") !== (state.playlistEditorDescriptionExtended ?? "") ||
+      String(data.get("purpose") ?? "") !== (state.playlistEditorPurpose ?? "") ||
+      String(data.get("tags") ?? "") !== (state.playlistEditorTags ?? "") ||
+      String(data.get("comment") ?? "") !== (state.playlistEditorComment ?? "")
+    );
+  };
+
+  const closePlaylistEditor = async (confirmUnsavedChanges = true) => {
+    if (confirmUnsavedChanges && playlistEditorHasUnsavedChanges()) {
+      const discardChanges = await confirm(
+        "Hay cambios sin guardar. ¿Quieres cerrar la ventana y descartarlos?",
+        {
+          title: "Cambios sin guardar",
+          kind: "warning",
+          okLabel: "Cerrar sin guardar",
+          cancelLabel: "Volver a la edición",
+        },
+      );
+      if (!discardChanges) {
+        return false;
+      }
+    }
+
+    state.playlistEditorOpen = false;
+    state.playlistEditorId = null;
+    state.playlistEditorName = "";
+    state.playlistEditorDescription = null;
+    state.playlistEditorDescriptionExtended = null;
+    state.playlistEditorPurpose = null;
+    state.playlistEditorTags = null;
+    state.playlistEditorComment = null;
+    state.playlistEditorCreatedAt = null;
+    state.playlistEditorDuration = null;
+    state.playlistEditorMaximized = false;
+    render();
+    return true;
   };
 
   const syncPlaybackTime = () => {
@@ -314,7 +363,7 @@ async function bootstrap() {
     return;
   }
 
-  root.addEventListener("click", (event) => {
+  root.addEventListener("click", async (event) => {
     const target = event.target as HTMLElement | null;
     if (!target) {
       return;
@@ -327,18 +376,8 @@ async function bootstrap() {
     }
 
     if (target.dataset.action === "close-playlist-editor") {
-      state.playlistEditorOpen = false;
-      state.playlistEditorId = null;
-      state.playlistEditorName = "";
-      state.playlistEditorDescription = null;
-      state.playlistEditorDescriptionExtended = null;
-      state.playlistEditorPurpose = null;
-      state.playlistEditorTags = null;
-      state.playlistEditorComment = null;
-      state.playlistEditorCreatedAt = null;
-      state.playlistEditorDuration = null;
-      state.playlistEditorMaximized = false;
-      render();
+      event.stopImmediatePropagation();
+      await closePlaylistEditor();
       return;
     }
   }, true);
@@ -489,28 +528,6 @@ async function bootstrap() {
       state.playlistEditorComment = playlist.comment;
       state.playlistEditorCreatedAt = playlist.created_at;
       state.playlistEditorDuration = playlist.duration;
-      state.playlistEditorMaximized = false;
-      render();
-      return;
-    }
-
-    if (target.dataset.action === "toggle-playlist-editor-maximize") {
-      state.playlistEditorMaximized = !state.playlistEditorMaximized;
-      render();
-      return;
-    }
-
-    if (target.dataset.action === "close-playlist-editor") {
-      state.playlistEditorOpen = false;
-      state.playlistEditorId = null;
-      state.playlistEditorName = "";
-      state.playlistEditorDescription = null;
-      state.playlistEditorDescriptionExtended = null;
-      state.playlistEditorPurpose = null;
-      state.playlistEditorTags = null;
-      state.playlistEditorComment = null;
-      state.playlistEditorCreatedAt = null;
-      state.playlistEditorDuration = null;
       state.playlistEditorMaximized = false;
       render();
       return;
@@ -910,18 +927,7 @@ async function bootstrap() {
       } catch (error) {
         state.error = error instanceof Error ? error.message : String(error);
       }
-      state.playlistEditorOpen = false;
-      state.playlistEditorId = null;
-      state.playlistEditorName = "";
-      state.playlistEditorDescription = null;
-      state.playlistEditorDescriptionExtended = null;
-      state.playlistEditorPurpose = null;
-      state.playlistEditorTags = null;
-      state.playlistEditorComment = null;
-      state.playlistEditorCreatedAt = null;
-      state.playlistEditorDuration = null;
-      state.playlistEditorMaximized = false;
-      render();
+      await closePlaylistEditor(false);
       return;
     }
   });
