@@ -483,6 +483,13 @@ td {
   padding-right: 1rem;
 }
 
+.song-duration {
+  padding-left: 1.5rem;
+  padding-right: 0.5rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -590,6 +597,36 @@ button.secondary {
   font-size: 1rem;
   font-weight: 400;
   line-height: 1.5;
+}
+
+.playlist-title-with-export {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.pdf-export-button {
+  width: 2rem;
+  height: 2rem;
+  padding: 0.35rem;
+  flex: 0 0 auto;
+  color: #b91c1c;
+  background: #fff;
+  border: 1px solid #fecaca;
+}
+
+.pdf-export-button:hover {
+  color: #fff;
+  background: #b91c1c;
+}
+
+.pdf-export-button svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  pointer-events: none;
 }
 
 .playlist-creator-modal {

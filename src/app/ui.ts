@@ -202,7 +202,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
               <th>Álbum</th>
               <th>Género</th>
               <th>Colección</th>
-              <th>Año</th>
+              <th class="song-duration" aria-label="Duración"></th>
             </tr>
           </thead>
           <tbody>
@@ -220,7 +220,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                     <td>${escapeHtml(song.album)}</td>
                     <td>${escapeHtml(song.genre)}</td>
                     <td>${escapeHtml(song.collection_name)}</td>
-                    <td>${escapeHtml(song.year)}</td>
+                    <td class="song-duration">${song.duration_seconds == null ? "" : formatPlaybackTime(song.duration_seconds)}</td>
                   </tr>
                 `,
               )
@@ -251,7 +251,12 @@ export function renderApp(state: AppState, root: HTMLElement) {
               </div>
               <div class="playlist-header-text">
                 <div class="playlist-header-title-row">
-                  <h3>${escapeHtml(currentPlaylist.name)}</h3>
+                  <div class="playlist-title-with-export">
+                    <h3>${escapeHtml(currentPlaylist.name)}</h3>
+                    <button type="button" class="icon-button pdf-export-button" data-action="export-playlist-pdf" aria-label="Exportar lista a PDF" title="Exportar lista a PDF">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l4 4v16H6V2Zm7 1.8V7h3.2L13 3.8ZM8.3 18h1.4v-2h.8c1.4 0 2.3-.8 2.3-2.1 0-1.3-.9-2.1-2.3-2.1H8.3V18Zm1.4-3.2V13h.7c.6 0 1 .3 1 .9s-.4.9-1 .9h-.7Zm3.8 3.2h2c1.7 0 2.8-1.2 2.8-3.1 0-1.9-1.1-3.1-2.8-3.1h-2V18Zm1.4-1.2V13h.5c.9 0 1.5.7 1.5 1.9 0 1.2-.6 1.9-1.5 1.9h-.5Z"/></svg>
+                    </button>
+                  </div>
                   <span class="playlist-duration">${escapeHtml(currentPlaylist.duration || "00:00:00")}</span>
                 </div>
                 <p class="playlist-description">${escapeHtml(currentPlaylist.description || "Sin descripción")}</p>

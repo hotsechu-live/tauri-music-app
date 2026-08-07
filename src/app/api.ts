@@ -99,6 +99,10 @@ export async function listPlaylistSongs(playlistId: number) {
   return invoke<any[]>("list_playlist_songs", { playlistId });
 }
 
+export async function writePdfFile(filePath: string, contents: Uint8Array) {
+  return invoke<string>("write_pdf_file", { filePath, contents: Array.from(contents) });
+}
+
 export async function listSongCustomMetadata(songId: number) {
   return invoke<any[]>("list_song_custom_metadata", { songId });
 }

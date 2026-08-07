@@ -927,6 +927,21 @@ fn list_playlist_songs(playlist_id: i64) -> Result<Vec<SongRecord>, String> {
 }
 
 #[command]
+fn write_pdf_file(file_path: String, contents: Vec<u8>) -> Result<String, String> {
+    let path = PathBuf::from(&file_path);
+    if path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(|extension| extension.eq_ignore_ascii_case("pdf"))
+        != Some(true)
+    {
+        return Err("El archivo de destino debe tener extensión .pdf.".to_string());
+    }
+    fs::write(&path, contents).map_err(|error| format!("No se pudo guardar el PDF: {error}"))?;
+    Ok(path.to_string_lossy().into_owned())
+}
+
+#[command]
 fn list_custom_metadata_definitions() -> Result<Vec<String>, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     let mut stmt = conn
@@ -1121,7 +1136,8 @@ pub fn run() {
             rename_custom_metadata_definition,
             delete_custom_metadata_definition,
             list_playlists,
-            list_playlist_songs
+            list_playlist_songs,
+            write_pdf_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

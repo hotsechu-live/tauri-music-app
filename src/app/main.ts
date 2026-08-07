@@ -1,11 +1,12 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { confirm } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs } from "./api.js";
+import { confirm, save } from "@tauri-apps/plugin-dialog";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
+import { playlistPdfBytes, playlistPdfFilename } from "./playlist-pdf.js";
 
 async function bootstrap() {
   const root = document.querySelector("#app") as HTMLElement | null;
@@ -576,6 +577,29 @@ async function bootstrap() {
       state.playlistEditorCreatedAt = playlist.created_at;
       state.playlistEditorDuration = playlist.duration;
       state.playlistEditorMaximized = false;
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "export-playlist-pdf") {
+      const playlist = state.playlists.find((entry) => entry.id === state.selectedPlaylistId);
+      if (!playlist) return;
+      try {
+        const filePath = await save({
+          title: "Guardar lista como PDF",
+          defaultPath: playlistPdfFilename(playlist.name),
+          filters: [{ name: "Documento PDF", extensions: ["pdf"] }],
+        });
+        if (!filePath) return;
+        const finalPath = filePath.toLowerCase().endsWith(".pdf") ? filePath : `${filePath}.pdf`;
+        const contents = playlistPdfBytes(playlist, state.playlistSongs);
+        await writePdfFile(finalPath, contents);
+        state.status = `PDF guardado en ${finalPath}`;
+        state.error = null;
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+        state.status = "";
+      }
       render();
       return;
     }
