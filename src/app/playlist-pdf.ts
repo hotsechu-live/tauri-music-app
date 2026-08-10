@@ -51,20 +51,20 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
   }).format(new Date());
   let y = 0;
 
-  const addPageHeader = (continuation = false) => {
+  const addPageHeader = () => {
     doc.setFillColor(24, 35, 52);
     doc.rect(0, 0, PAGE_WIDTH, 25, "F");
     doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(11);
-    doc.text(continuation ? `${playlist.name} - continuación` : "INFORME DE LISTA", MARGIN, 15.5);
+    doc.text(playlist.name, MARGIN, 15.5);
     y = 34;
   };
 
   const ensureSpace = (height: number) => {
     if (y + height <= PAGE_HEIGHT - 17) return;
     doc.addPage();
-    addPageHeader(true);
+    addPageHeader();
   };
 
   const sectionTitle = (title: string) => {
@@ -94,30 +94,34 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
   };
 
   addPageHeader();
-  doc.setTextColor(17, 24, 39);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
-  const titleLines = doc.splitTextToSize(playlist.name, CONTENT_WIDTH - 42) as string[];
-  doc.text(titleLines, MARGIN, y + 7);
-  const titleHeight = Math.max(15, titleLines.length * 9);
+  const summaryY = y;
+  const durationWidth = 42;
+  const durationHeight = 17;
+  const durationX = PAGE_WIDTH - MARGIN - durationWidth;
   doc.setFillColor(245, 180, 45);
-  doc.roundedRect(PAGE_WIDTH - MARGIN - 36, y, 36, 13, 3, 3, "F");
+  doc.roundedRect(durationX, summaryY, durationWidth, durationHeight, 3, 3, "F");
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(6.5);
+  doc.setTextColor(83, 63, 15);
+  doc.text("Duración de la música", durationX + durationWidth / 2, summaryY + 5.2, { align: "center" });
+  doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(48, 36, 8);
-  doc.text(playlist.duration || "00:00:00", PAGE_WIDTH - MARGIN - 18, y + 8.3, { align: "center" });
-  y += titleHeight;
+  doc.text(playlist.duration || "00:00:00", durationX + durationWidth / 2, summaryY + 12.5, { align: "center" });
   if (playlist.description?.trim()) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(11);
     doc.setTextColor(92, 103, 115);
-    const description = doc.splitTextToSize(playlist.description.trim(), CONTENT_WIDTH) as string[];
-    doc.text(description, MARGIN, y + 2);
-    y += description.length * 5 + 7;
-  } else {
-    y += 4;
+    const descriptionWidth = CONTENT_WIDTH - durationWidth - 8;
+    const description = doc.splitTextToSize(playlist.description.trim(), descriptionWidth) as string[];
+    const lineHeight = 5;
+    const descriptionHeight = 3.8 + (description.length - 1) * lineHeight;
+    const descriptionY = summaryY + (durationHeight - descriptionHeight) / 2 + 3.2;
+    doc.text(description, MARGIN, descriptionY, { lineHeightFactor: 1.28 });
   }
+  y = summaryY + durationHeight + 4;
 
-  sectionTitle("Información de la lista");
+  sectionTitle("Información");
   if (playlist.created_at.trim()) paragraph("Creada", formatDate(playlist.created_at));
   if (playlist.purpose?.trim()) paragraph("Finalidad", playlist.purpose.trim());
   if (playlist.tags?.trim()) paragraph("Etiquetas", playlist.tags.trim());

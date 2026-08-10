@@ -89,6 +89,104 @@ impl NativeAudioPlayer {
     }
 }
 
+#[cfg(target_os = "linux")]
+use gstreamer as gst;
+#[cfg(target_os = "linux")]
+use gst::prelude::*;
+
+#[cfg(target_os = "linux")]
+struct NativeAudioPlayer {
+    player: Mutex<gst::Element>,
+}
+
+#[cfg(target_os = "linux")]
+impl NativeAudioPlayer {
+    fn new(app_handle: AppHandle) -> Result<Self, String> {
+        gst::init().map_err(|error| format!("No se pudo iniciar GStreamer: {error}"))?;
+        let player = gst::ElementFactory::make("playbin")
+            .build()
+            .map_err(|error| format!("No se pudo crear el reproductor de GStreamer: {error}"))?;
+        let bus = player
+            .bus()
+            .ok_or_else(|| "GStreamer no pudo crear el bus de mensajes.".to_string())?;
+
+        std::thread::Builder::new()
+            .name("gstreamer-audio-events".to_string())
+            .spawn(move || {
+                for message in bus.iter_timed(gst::ClockTime::NONE) {
+                    match message.view() {
+                        gst::MessageView::Eos(..) => {
+                            let _ = app_handle.emit("native-audio-ended", ());
+                        }
+                        gst::MessageView::Error(error) => {
+                            let details = error
+                                .debug()
+                                .map(|debug| format!(" ({debug})"))
+                                .unwrap_or_default();
+                            let _ = app_handle.emit(
+                                "native-audio-error",
+                                format!("Error de GStreamer: {}{details}", error.error()),
+                            );
+                        }
+                        _ => {}
+                    }
+                }
+            })
+            .map_err(|error| format!("No se pudo iniciar la escucha de GStreamer: {error}"))?;
+
+        Ok(Self {
+            player: Mutex::new(player),
+        })
+    }
+
+    fn play(&self, file_path: &str) -> Result<(), String> {
+        let uri = gst::glib::filename_to_uri(file_path, None)
+            .map_err(|error| format!("La ruta del archivo no es válida: {error}"))?;
+        let player = self
+            .player
+            .lock()
+            .map_err(|_| "El reproductor está ocupado.".to_string())?;
+        player
+            .set_state(gst::State::Null)
+            .map_err(|error| format!("GStreamer no pudo detener la pista anterior: {error}"))?;
+        player.set_property("uri", uri.as_str());
+        player
+            .set_state(gst::State::Playing)
+            .map_err(|error| format!("GStreamer no pudo reproducir el archivo: {error}"))?;
+        Ok(())
+    }
+
+    fn pause(&self) -> Result<(), String> {
+        self.set_state(gst::State::Paused, "pausar")
+    }
+
+    fn resume(&self) -> Result<(), String> {
+        self.set_state(gst::State::Playing, "reanudar")
+    }
+
+    fn stop(&self) -> Result<(), String> {
+        self.set_state(gst::State::Null, "detener")
+    }
+
+    fn seek(&self, seconds: f64) -> Result<(), String> {
+        let position = gst::ClockTime::from_nseconds((seconds.max(0.0) * 1_000_000_000.0) as u64);
+        self.player
+            .lock()
+            .map_err(|_| "El reproductor está ocupado.".to_string())?
+            .seek_simple(gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT, position)
+            .map_err(|error| format!("No se pudo cambiar la posición de reproducción: {error}"))
+    }
+
+    fn set_state(&self, state: gst::State, action: &str) -> Result<(), String> {
+        self.player
+            .lock()
+            .map_err(|_| "El reproductor está ocupado.".to_string())?
+            .set_state(state)
+            .map(|_| ())
+            .map_err(|error| format!("GStreamer no pudo {action} la reproducción: {error}"))
+    }
+}
+
 #[derive(Debug, Serialize)]
 struct SongRecord {
     id: i64,
@@ -357,7 +455,7 @@ fn stop_native_audio(player: tauri::State<'_, NativeAudioPlayer>) -> Result<Stri
     Ok("ok".to_string())
 }
 
-#[cfg(target_os = "windows")]
+#[cfg(any(target_os = "windows", target_os = "linux"))]
 #[tauri::command]
 fn seek_native_audio(
     player: tauri::State<'_, NativeAudioPlayer>,

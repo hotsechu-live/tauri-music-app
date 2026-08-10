@@ -381,6 +381,14 @@ async function bootstrap() {
     void handlePlaybackEnded();
   });
 
+  await listen<string>("native-audio-error", (event) => {
+    state.error = `No se pudo continuar la reproducción: ${event.payload}`;
+    state.playbackStatus = "stopped";
+    playbackStartedAt = 0;
+    state.status = "Error de reproducción";
+    render();
+  });
+
   await listen<{ playlistId: number }>("playlist-changed", (event) => {
     state.selectedPlaylistId = event.payload.playlistId;
     void refreshData();

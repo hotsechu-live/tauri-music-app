@@ -1,4 +1,10 @@
 # Tauri Music App
+
+## Requisitos de reproducción
+
+- En Windows se utiliza Windows Media Player mediante las APIs nativas del sistema.
+- En Linux se utiliza GStreamer. Deben estar instalados GStreamer 1.x, sus archivos de desarrollo y los plugins/códecs necesarios para los formatos que se quieran reproducir (por ejemplo, los paquetes `base`, `good`, `bad`, `ugly` y `libav` de la distribución).
+
 # Aplicación para la gestión de colecciones de canciones
 ## App contruida usando Tauri + Vanilla TS + Vite + Rust + SQLite
 ## Descripción
