@@ -1,8 +1,8 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { confirm, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, selectMusicFolder, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile } from "./api.js";
+import { confirm, open, save } from "@tauri-apps/plugin-dialog";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
@@ -478,18 +478,32 @@ async function bootstrap() {
     }
 
     if (target.id === "import-btn") {
-      const folderPath = await selectMusicFolder();
-      if (!folderPath) {
-        return;
-      }
-      state.selectedFolder = folderPath;
-      state.status = "Carpeta lista para importar";
+      state.status = "Esperando selección de carpeta…";
       state.error = null;
       render();
-      setTimeout(() => {
-        const input = document.querySelector("#collection-name") as HTMLInputElement | null;
-        input?.focus();
-      }, 0);
+
+      try {
+        const folderPath = await open({
+          directory: true,
+          multiple: false,
+          title: "Selecciona una carpeta de música",
+        });
+        if (!folderPath) {
+          state.status = "";
+          render();
+          return;
+        }
+        state.selectedFolder = folderPath;
+        state.status = "Carpeta lista para importar";
+        render();
+        setTimeout(() => {
+          root.querySelector<HTMLInputElement>("#collection-name")?.focus();
+        }, 0);
+      } catch (error) {
+        state.status = "";
+        state.error = `No se pudo abrir el selector de carpetas: ${error instanceof Error ? error.message : String(error)}`;
+        render();
+      }
       return;
     }
 

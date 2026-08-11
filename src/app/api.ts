@@ -24,10 +24,6 @@ export async function seekNativeAudio(seconds: number) {
   return invoke<string>("seek_native_audio", { seconds });
 }
 
-export async function selectMusicFolder(): Promise<string | null> {
-  return invoke<string | null>("select_music_folder");
-}
-
 export async function importCollection(folderPath: string, collectionName: string) {
   return invoke<{ imported: number; collection_id: number }>("import_collection", {
     folderPath,

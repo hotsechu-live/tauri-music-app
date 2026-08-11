@@ -9,7 +9,6 @@ use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
 use tauri::{command, AppHandle, Emitter, Manager};
-use tauri_plugin_dialog::DialogExt;
 use walkdir::WalkDir;
 
 #[cfg(target_os = "windows")]
@@ -463,23 +462,6 @@ fn seek_native_audio(
 ) -> Result<String, String> {
     player.seek(seconds)?;
     Ok("PosiciÃ³n de reproducciÃ³n actualizada".to_string())
-}
-
-#[command]
-fn select_music_folder(app_handle: AppHandle) -> Result<Option<String>, String> {
-    let dialog = app_handle
-        .dialog()
-        .file()
-        .set_title("Selecciona una carpeta de música")
-        .blocking_pick_folder();
-
-    match dialog {
-        Some(path) => match path.into_path() {
-            Ok(path_buf) => Ok(Some(path_buf.to_string_lossy().to_string())),
-            Err(_) => Err("No se pudo convertir la ruta de la carpeta seleccionada.".to_string()),
-        },
-        None => Ok(None),
-    }
 }
 
 fn normalize_collection_folder_path(folder_path: &str) -> String {
@@ -1213,7 +1195,6 @@ pub fn run() {
             resume_native_audio,
             stop_native_audio,
             seek_native_audio,
-            select_music_folder,
             import_collection,
             list_songs,
             list_collections,
