@@ -409,6 +409,14 @@ button {
 
 .song-title {
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-song-duration {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .song-details {
