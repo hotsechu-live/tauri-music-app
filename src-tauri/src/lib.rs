@@ -6,6 +6,7 @@ use std::{
 
 use chrono::Utc;
 use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
+use regex::Regex;
 use rusqlite::{params, Connection, Result};
 use serde::Serialize;
 use tauri::{command, AppHandle, Emitter, Manager};
@@ -502,6 +503,48 @@ fn find_collection_id_by_folder_path(
     Ok(None)
 }
 
+fn normalize_imported_genre(genre: &str) -> String {
+    const UNWANTED_TEXTS: [&str; 3] = [
+        " Ya! 5.0 CIMEB AE 2018",
+        "- Ya! 5.0 R Toro 2009",
+        " Ya! 5.0 R Toro 2009",
+    ];
+    static ELENCO_TEXT: OnceLock<Regex> = OnceLock::new();
+    static CIMEB_2012_TEXT: OnceLock<Regex> = OnceLock::new();
+    static R_TORO_PREFIX: OnceLock<Regex> = OnceLock::new();
+
+    let cleaned = ELENCO_TEXT
+        .get_or_init(|| {
+            Regex::new(r"(?:-[ \t]+|[ \t]+)Elenco[ \t]+Ya![ \t]+5\.0[ \t]+CIMEB[ \t]+2012")
+                .expect("La expresión de limpieza del género debe ser válida")
+        })
+        .replace_all(genre, "");
+    let cleaned = CIMEB_2012_TEXT
+        .get_or_init(|| {
+            Regex::new(r"(?:^[ \t]*|-[ \t]+|[ \t]+)Ya![ \t]+5\.0[ \t]+CIMEB[ \t]+2012")
+                .expect("La expresión de limpieza de CIMEB 2012 debe ser válida")
+        })
+        .replace_all(&cleaned, "");
+    let cleaned = R_TORO_PREFIX
+        .get_or_init(|| {
+            Regex::new(r"^[ \t]*Ya![ \t]+5\.0[ \t]+R[ \t]+Toro[ \t]+2009")
+                .expect("La expresión de limpieza del prefijo del género debe ser válida")
+        })
+        .replace(&cleaned, "");
+    let cleaned = UNWANTED_TEXTS
+        .iter()
+        .fold(cleaned.into_owned(), |value, unwanted| {
+            value.replace(unwanted, "")
+        });
+    let cleaned = cleaned.trim();
+
+    cleaned
+        .strip_suffix(" -")
+        .unwrap_or(cleaned)
+        .trim_end()
+        .to_string()
+}
+
 #[command]
 fn import_collection(
     app_handle: AppHandle,
@@ -585,7 +628,7 @@ fn import_collection(
             .as_ref()
             .and_then(|file| file.primary_tag().or_else(|| file.first_tag()))
             .and_then(|tag| tag.genre())
-            .map(|s| s.to_string())
+            .map(|genre| normalize_imported_genre(&genre))
             .unwrap_or_default();
 
         let year = track
@@ -1126,7 +1169,11 @@ fn delete_custom_metadata_definition(key: String) -> Result<String, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{find_collection_id_by_folder_path, normalize_collection_folder_path, normalize_metadata_key};
+    use super::{
+        find_collection_id_by_folder_path, normalize_imported_genre, normalize_metadata_key,
+    };
+    #[cfg(windows)]
+    use super::normalize_collection_folder_path;
     use rusqlite::{params, Connection};
 
     #[test]
@@ -1134,12 +1181,81 @@ mod tests {
         assert_eq!(normalize_metadata_key("  Comment  "), "comment");
     }
 
+    #[cfg(windows)]
     #[test]
     fn normalize_collection_folder_path_strips_windows_extended_prefix() {
         assert_eq!(
             normalize_collection_folder_path(r"\\?\C:\Users\hotse\Music"),
             "c:/users/hotse/music"
         );
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_unwanted_texts_and_trims_result() {
+        let cases = [
+            ("Rock- Elenco Ya! 5.0 CIMEB 2012", "Rock"),
+            ("Rock Elenco Ya! 5.0 CIMEB 2012", "Rock"),
+            ("Rock Ya! 5.0 CIMEB AE 2018", "Rock"),
+            ("Rock- Ya! 5.0 R Toro 2009", "Rock"),
+            ("Rock Ya! 5.0 R Toro 2009", "Rock"),
+        ];
+
+        for (genre, expected) in cases {
+            assert_eq!(normalize_imported_genre(genre), expected);
+        }
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_repeated_texts() {
+        assert_eq!(
+            normalize_imported_genre(
+                "  Jazz Ya! 5.0 CIMEB AE 2018 Elenco Ya! 5.0 CIMEB 2012  "
+            ),
+            "Jazz"
+        );
+    }
+
+    #[test]
+    fn normalize_imported_genre_accepts_extra_blanks_in_elenco_text() {
+        assert_eq!(
+            normalize_imported_genre("Rock-   Elenco  Ya!\t5.0    CIMEB  2012"),
+            "Rock"
+        );
+        assert_eq!(
+            normalize_imported_genre("Rock    Elenco   Ya!  5.0 CIMEB     2012"),
+            "Rock"
+        );
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_r_toro_text_at_the_start() {
+        assert_eq!(
+            normalize_imported_genre("Ya! 5.0 R Toro 2009 Rock"),
+            "Rock"
+        );
+        assert_eq!(
+            normalize_imported_genre("  Ya!  5.0   R Toro  2009 Jazz"),
+            "Jazz"
+        );
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_cimeb_2012_without_elenco() {
+        let cases = [
+            ("Ya! 5.0 CIMEB 2012 Rock", "Rock"),
+            ("Rock Ya!  5.0  CIMEB   2012", "Rock"),
+            ("Rock-   Ya! 5.0 CIMEB 2012", "Rock"),
+        ];
+
+        for (genre, expected) in cases {
+            assert_eq!(normalize_imported_genre(genre), expected);
+        }
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_dash_only_at_the_end() {
+        assert_eq!(normalize_imported_genre("  Rock -  "), "Rock");
+        assert_eq!(normalize_imported_genre("Rock - Alternativo"), "Rock - Alternativo");
     }
 
     #[test]
@@ -1156,6 +1272,7 @@ mod tests {
         assert_eq!(existing_id, Some(1));
     }
 
+    #[cfg(windows)]
     #[test]
     fn find_collection_id_by_folder_path_matches_backslashes_and_case_variations() {
         let conn = Connection::open_in_memory().unwrap();

@@ -535,6 +535,14 @@ td {
   padding-right: 1rem;
 }
 
+.song-title-column {
+  padding-right: 1rem;
+}
+
+.song-spaced-column {
+  padding-right: 1rem;
+}
+
 .song-duration {
   padding-left: 1.5rem;
   padding-right: 0.5rem;

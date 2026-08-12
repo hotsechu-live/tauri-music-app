@@ -3654,6 +3654,7 @@ dependencies = [
  "chrono",
  "gstreamer",
  "lofty",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",

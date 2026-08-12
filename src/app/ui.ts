@@ -211,11 +211,11 @@ export function renderApp(state: AppState, root: HTMLElement) {
           <thead>
             <tr>
               <th></th>
-              <th>Título</th>
-              <th>Artista</th>
-              <th>Álbum</th>
-              <th>Género</th>
-              <th>Colección</th>
+              <th class="song-title-column">Título</th>
+              <th class="song-spaced-column">Artista</th>
+              <th class="song-spaced-column">Álbum</th>
+              <th class="song-spaced-column">Género</th>
+              <th class="song-spaced-column">Colección</th>
               <th class="song-duration" aria-label="Duración"></th>
             </tr>
           </thead>
@@ -229,11 +229,11 @@ export function renderApp(state: AppState, root: HTMLElement) {
                       <button class="icon-button" data-action="edit-song-metadata" data-song-id="${song.id}" aria-label="Editar metadatos" title="Editar metadatos">&#9998;</button>
                       <button class="icon-button" data-action="add-song-to-playlist" data-song-id="${song.id}" aria-label="Añadir a una lista" title="Añadir a una lista">+</button>
                     </td>
-                    <td>${escapeHtml(song.title)}</td>
-                    <td>${escapeHtml(song.artist)}</td>
-                    <td>${escapeHtml(song.album)}</td>
-                    <td>${escapeHtml(song.genre)}</td>
-                    <td>${escapeHtml(song.collection_name)}</td>
+                    <td class="song-title-column">${escapeHtml(song.title)}</td>
+                    <td class="song-spaced-column">${escapeHtml(song.artist)}</td>
+                    <td class="song-spaced-column">${escapeHtml(song.album)}</td>
+                    <td class="song-spaced-column">${escapeHtml(song.genre)}</td>
+                    <td class="song-spaced-column">${escapeHtml(song.collection_name)}</td>
                     <td class="song-duration">${song.duration_seconds == null ? "" : formatPlaybackTime(song.duration_seconds)}</td>
                   </tr>
                 `,
