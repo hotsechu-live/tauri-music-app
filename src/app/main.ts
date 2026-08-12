@@ -21,7 +21,7 @@ async function bootstrap() {
 
   const refreshData = async () => {
     try {
-      const songs = await listSongs(state.currentCollectionId ?? undefined);
+      const songs = await listSongs();
       const collections = await listCollections();
       const playlists = await listPlaylists();
       state.songs = songs;
@@ -173,7 +173,10 @@ async function bootstrap() {
   };
 
   const getVisibleSongs = () => {
-    return filterSongs(state.songs, state.searchQuery, state.searchField);
+    const collectionSongs = state.selectedCollectionIds.length === 0
+      ? state.songs
+      : state.songs.filter((song) => state.selectedCollectionIds.includes(song.collection_id));
+    return filterSongs(collectionSongs, state.searchQuery, state.searchField);
   };
 
   const shuffled = <T>(entries: T[]) => {
@@ -572,7 +575,7 @@ async function bootstrap() {
       }
       try {
         await deleteCollection(collectionId);
-        state.currentCollectionId = state.currentCollectionId === collectionId ? null : state.currentCollectionId;
+        state.selectedCollectionIds = state.selectedCollectionIds.filter((id) => id !== collectionId);
         await refreshData();
         state.error = null;
       } catch (error) {
@@ -946,9 +949,18 @@ async function bootstrap() {
       return;
     }
 
-    if (target.id === "collection-filter") {
-      state.currentCollectionId = target.value ? Number(target.value) : null;
-      await refreshData();
+    if (target.matches('[data-action="filter-collection"]')) {
+      const checkbox = target as HTMLInputElement;
+      const collectionId = Number(target.value);
+      state.selectedCollectionIds = checkbox.checked
+        ? [...state.selectedCollectionIds, collectionId]
+        : state.selectedCollectionIds.filter((id) => id !== collectionId);
+      render();
+    }
+
+    if (target.id === "all-collections-filter") {
+      state.selectedCollectionIds = [];
+      render();
     }
 
     if (target.id === "search-field") {

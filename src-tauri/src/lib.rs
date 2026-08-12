@@ -189,6 +189,7 @@ impl NativeAudioPlayer {
 #[derive(Debug, Serialize)]
 struct SongRecord {
     id: i64,
+    collection_id: i64,
     collection_name: String,
     title: String,
     artist: String,
@@ -633,16 +634,17 @@ fn import_collection(
 fn map_song_row(row: &rusqlite::Row) -> rusqlite::Result<SongRecord> {
     Ok(SongRecord {
         id: row.get(0)?,
-        collection_name: row.get(1)?,
-        title: row.get(2)?,
-        artist: row.get(3)?,
-        album: row.get(4)?,
-        genre: row.get(5)?,
-        year: row.get(6)?,
-        duration_seconds: row.get(7)?,
-        format: row.get(8)?,
-        file_size: row.get(9)?,
-        file_path: row.get(10)?,
+        collection_id: row.get(1)?,
+        collection_name: row.get(2)?,
+        title: row.get(3)?,
+        artist: row.get(4)?,
+        album: row.get(5)?,
+        genre: row.get(6)?,
+        year: row.get(7)?,
+        duration_seconds: row.get(8)?,
+        format: row.get(9)?,
+        file_size: row.get(10)?,
+        file_path: row.get(11)?,
         custom_metadata: Vec::new(),
     })
 }
@@ -673,9 +675,9 @@ fn attach_custom_metadata(conn: &Connection, songs: &mut [SongRecord]) -> Result
 fn list_songs(collection_id: Option<i64>) -> Result<Vec<SongRecord>, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     let query = if collection_id.is_some() {
-        "SELECT s.id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path FROM songs s JOIN collections c ON c.id = s.collection_id WHERE s.collection_id = ?1 ORDER BY s.title"
+        "SELECT s.id, s.collection_id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path FROM songs s JOIN collections c ON c.id = s.collection_id WHERE s.collection_id = ?1 ORDER BY s.title"
     } else {
-        "SELECT s.id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path FROM songs s JOIN collections c ON c.id = s.collection_id ORDER BY s.title"
+        "SELECT s.id, s.collection_id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path FROM songs s JOIN collections c ON c.id = s.collection_id ORDER BY s.title"
     };
     let mut stmt = conn.prepare(query).map_err(|e| e.to_string())?;
     let rows = if let Some(collection_id) = collection_id {
@@ -979,21 +981,22 @@ fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
 fn list_playlist_songs(playlist_id: i64) -> Result<Vec<SongRecord>, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(
-        "SELECT s.id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path FROM playlist_songs ps JOIN songs s ON s.id = ps.song_id JOIN collections c ON c.id = s.collection_id WHERE ps.playlist_id = ?1 ORDER BY ps.position"
+        "SELECT s.id, s.collection_id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path FROM playlist_songs ps JOIN songs s ON s.id = ps.song_id JOIN collections c ON c.id = s.collection_id WHERE ps.playlist_id = ?1 ORDER BY ps.position"
     ).map_err(|e| e.to_string())?;
     let rows = stmt.query_map(params![playlist_id], |row| {
         Ok(SongRecord {
             id: row.get(0)?,
-            collection_name: row.get(1)?,
-            title: row.get(2)?,
-            artist: row.get(3)?,
-            album: row.get(4)?,
-            genre: row.get(5)?,
-            year: row.get(6)?,
-            duration_seconds: row.get(7)?,
-            format: row.get(8)?,
-            file_size: row.get(9)?,
-            file_path: row.get(10)?,
+            collection_id: row.get(1)?,
+            collection_name: row.get(2)?,
+            title: row.get(3)?,
+            artist: row.get(4)?,
+            album: row.get(5)?,
+            genre: row.get(6)?,
+            year: row.get(7)?,
+            duration_seconds: row.get(8)?,
+            format: row.get(9)?,
+            file_size: row.get(10)?,
+            file_path: row.get(11)?,
             custom_metadata: Vec::new(),
         })
     }).map_err(|e| e.to_string())?;

@@ -76,7 +76,10 @@ export function updatePlaybackProgress(state: AppState, root: HTMLElement) {
 }
 
 export function renderApp(state: AppState, root: HTMLElement) {
-  const filteredSongs = filterSongs(state.songs, state.searchQuery, state.searchField);
+  const collectionSongs = state.selectedCollectionIds.length === 0
+    ? state.songs
+    : state.songs.filter((song) => state.selectedCollectionIds.includes(song.collection_id));
+  const filteredSongs = filterSongs(collectionSongs, state.searchQuery, state.searchField);
   const customMetadataKeys = [...new Set(
     state.songs.flatMap((song) => song.custom_metadata.map((item) => item.key)),
   )].sort((left, right) => left.localeCompare(right, "es"));
@@ -176,18 +179,29 @@ export function renderApp(state: AppState, root: HTMLElement) {
               })
               .join("")}
           </select>
-          <select id="collection-filter" aria-label="Filtrar por colección">
-            <option value="">Mostrar todas las colecciones</option>
-            ${state.collections
-              .map(
-                (collection) => `
-                  <option value="${collection.id}" ${state.currentCollectionId === collection.id ? "selected" : ""}>
-                    ${escapeHtml(collection.name)}
-                  </option>
-                `,
-              )
-              .join("")}
-          </select>
+          <details class="collection-filter" ${state.selectedCollectionIds.length > 0 ? "open" : ""}>
+            <summary aria-label="Filtrar por colecciones">
+              ${state.selectedCollectionIds.length === 0
+                ? "Todas las colecciones"
+                : `${state.selectedCollectionIds.length} ${state.selectedCollectionIds.length === 1 ? "colección" : "colecciones"}`}
+            </summary>
+            <div class="collection-filter-options">
+              <label>
+                <input id="all-collections-filter" type="checkbox" ${state.selectedCollectionIds.length === 0 ? "checked" : ""} />
+                Todas las colecciones
+              </label>
+              ${state.collections
+                .map(
+                  (collection) => `
+                    <label>
+                      <input type="checkbox" data-action="filter-collection" value="${collection.id}" ${state.selectedCollectionIds.includes(collection.id) ? "checked" : ""} />
+                      ${escapeHtml(collection.name)}
+                    </label>
+                  `,
+                )
+                .join("")}
+            </div>
+          </details>
         </div>
         <div class="action-row">
           <button id="play-filtered-btn">Reproducir filtradas</button>

@@ -1,5 +1,6 @@
 export type Song = {
   id: number;
+  collection_id: number;
   collection_name: string;
   title: string;
   artist: string;
@@ -46,7 +47,7 @@ export type AppState = {
   songs: Song[];
   playlists: Playlist[];
   collections: Collection[];
-  currentCollectionId: number | null;
+  selectedCollectionIds: number[];
   searchQuery: string;
   pendingSearchQuery: string;
   searchField: string;
@@ -86,7 +87,7 @@ export const createInitialState = (): AppState => ({
   songs: [],
   playlists: [],
   collections: [],
-  currentCollectionId: null,
+  selectedCollectionIds: [],
   searchQuery: "",
   pendingSearchQuery: "",
   searchField: "",
