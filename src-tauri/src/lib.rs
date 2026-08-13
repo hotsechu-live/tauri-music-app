@@ -515,38 +515,73 @@ fn find_collection_id_by_folder_path(
 }
 
 fn normalize_imported_genre(genre: &str) -> String {
-    const UNWANTED_TEXTS: [&str; 3] = [
-        " Ya! 5.0 CIMEB AE 2018",
-        "- Ya! 5.0 R Toro 2009",
-        " Ya! 5.0 R Toro 2009",
-    ];
-    static ELENCO_TEXT: OnceLock<Regex> = OnceLock::new();
-    static CIMEB_2012_TEXT: OnceLock<Regex> = OnceLock::new();
-    static R_TORO_PREFIX: OnceLock<Regex> = OnceLock::new();
+    static UNWANTED_GENRE_TEXT: OnceLock<Regex> = OnceLock::new();
+    static UNWANTED_HD_PREFIX: OnceLock<Regex> = OnceLock::new();
+    static UNWANTED_HD_SUFFIX: OnceLock<Regex> = OnceLock::new();
+    static STANDALONE_YA_PREFIX: OnceLock<Regex> = OnceLock::new();
+    static STANDALONE_YA_SUFFIX: OnceLock<Regex> = OnceLock::new();
 
-    let cleaned = ELENCO_TEXT
+    let cleaned = UNWANTED_GENRE_TEXT
         .get_or_init(|| {
-            Regex::new(r"(?:-[ \t]+|[ \t]+)Elenco[ \t]+Ya![ \t]+5\.0[ \t]+CIMEB[ \t]+2012")
-                .expect("La expresión de limpieza del género debe ser válida")
+            Regex::new(concat!(
+                r"(?:-[ \t]*|[ \t]+)?(?:",
+                r"Elenco[ \t]+Ya![ \t]+5\.0[ \t]+CIMEB[ \t]+2012",
+                r"|Ya![ \t]+5\.0[ \t]+CIMEB[ \t]+2012",
+                r"|Ya![ \t]+5\.0[ \t]+CIMEB[ \t]+AE[ \t]+2018",
+                r"|Ya![ \t]+5\.0[ \t]+R[ \t]+Toro[ \t]+2009",
+                r")",
+            ))
+            .expect("La expresión de limpieza del género debe ser válida")
         })
         .replace_all(genre, "");
-    let cleaned = CIMEB_2012_TEXT
+    let cleaned = UNWANTED_HD_PREFIX
         .get_or_init(|| {
-            Regex::new(r"(?:^[ \t]*|-[ \t]+|[ \t]+)Ya![ \t]+5\.0[ \t]+CIMEB[ \t]+2012")
-                .expect("La expresión de limpieza de CIMEB 2012 debe ser válida")
-        })
-        .replace_all(&cleaned, "");
-    let cleaned = R_TORO_PREFIX
-        .get_or_init(|| {
-            Regex::new(r"^[ \t]*Ya![ \t]+5\.0[ \t]+R[ \t]+Toro[ \t]+2009")
-                .expect("La expresión de limpieza del prefijo del género debe ser válida")
+            Regex::new(concat!(
+                r"^[ \t]*(?:",
+                r"Ya![ \t]+5\.0[ \t]+R[ \t]+Compartida[ \t]+HD",
+                r"|Ya![ \t]+5\.0[ \t]+Compartida[ \t]+HD",
+                r"|Ya![ \t]+5\.0[ \t]+Experimental[ \t]+HD",
+                r"|Ya![ \t]+4\.5[ \t]+Experimental[ \t]+HD",
+                r"|Ya![ \t]+3\.9[ \t]+Experimental[ \t]+\(nueva\)",
+                r"|5[ \t]+\.0[ \t]+Experimental[ \t]+HD",
+                r"|Ya![ \t]+Compartida[ \t]+HD",
+                r"|Ya![ \t]+5\.0[ \t]+Compartida",
+                r"|Ya!",
+                r")",
+            ))
+            .expect("La expresión de limpieza del prefijo HD debe ser válida")
         })
         .replace(&cleaned, "");
-    let cleaned = UNWANTED_TEXTS
-        .iter()
-        .fold(cleaned.into_owned(), |value, unwanted| {
-            value.replace(unwanted, "")
-        });
+    let cleaned = UNWANTED_HD_SUFFIX
+        .get_or_init(|| {
+            Regex::new(concat!(
+                r"(?:-[ \t]*|[ \t]+)?(?:",
+                r"Ya![ \t]+5\.0[ \t]+R[ \t]+Compartida[ \t]+HD",
+                r"|Ya![ \t]+5\.0[ \t]+Compartida[ \t]+HD",
+                r"|Ya![ \t]+5\.0[ \t]+Experimental[ \t]+HD",
+                r"|Ya![ \t]+4\.5[ \t]+Experimental[ \t]+HD",
+                r"|Ya![ \t]+3\.9[ \t]+Experimental[ \t]+\(nueva\)",
+                r"|5[ \t]+\.0[ \t]+Experimental[ \t]+HD",
+                r"|Ya![ \t]+Compartida[ \t]+HD",
+                r"|Ya![ \t]+5\.0[ \t]+Compartida",
+                r"|Ya!",
+                r")[ \t]*$",
+            ))
+            .expect("La expresión de limpieza del sufijo HD debe ser válida")
+        })
+        .replace(&cleaned, "");
+    let cleaned = STANDALONE_YA_PREFIX
+        .get_or_init(|| {
+            Regex::new(r"^\s*Ya!\s*")
+                .expect("La expresión de limpieza del prefijo Ya! debe ser válida")
+        })
+        .replace(&cleaned, "");
+    let cleaned = STANDALONE_YA_SUFFIX
+        .get_or_init(|| {
+            Regex::new(r"\s*Ya!\s*$")
+                .expect("La expresión de limpieza del sufijo Ya! debe ser válida")
+        })
+        .replace(&cleaned, "");
     let cleaned = cleaned.trim();
 
     cleaned
@@ -1256,6 +1291,94 @@ mod tests {
             ("Ya! 5.0 CIMEB 2012 Rock", "Rock"),
             ("Rock Ya!  5.0  CIMEB   2012", "Rock"),
             ("Rock-   Ya! 5.0 CIMEB 2012", "Rock"),
+        ];
+
+        for (genre, expected) in cases {
+            assert_eq!(normalize_imported_genre(genre), expected);
+        }
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_hd_texts_at_the_edges() {
+        let cases = [
+            ("Ya! 5.0 Compartida HD Rock", "Rock"),
+            ("Rock Ya! 5.0 Compartida HD", "Rock"),
+            ("  Ya!  5.0 Experimental   HD  Jazz", "Jazz"),
+            ("Jazz Ya!  5.0  Experimental HD  ", "Jazz"),
+            ("Ya! 5.0 Compartida HD", ""),
+        ];
+
+        for (genre, expected) in cases {
+            assert_eq!(normalize_imported_genre(genre), expected);
+        }
+
+        assert_eq!(
+            normalize_imported_genre("Rock Ya! 5.0 Compartida HD Jazz"),
+            "Rock Ya! 5.0 Compartida HD Jazz"
+        );
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_cimeb_ae_at_the_edges() {
+        let cases = [
+            ("Ya! 5.0 CIMEB AE 2018 Rock", "Rock"),
+            ("Rock Ya! 5.0 CIMEB AE 2018", "Rock"),
+            ("  Ya!  5.0 CIMEB   AE  2018  Jazz", "Jazz"),
+            ("Jazz Ya! 5.0  CIMEB AE   2018  ", "Jazz"),
+            ("Ya! 5.0 CIMEB AE 2018", ""),
+        ];
+
+        for (genre, expected) in cases {
+            assert_eq!(normalize_imported_genre(genre), expected);
+        }
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_unwanted_text_when_attached() {
+        let cases = [
+            ("RockYa! 5.0 CIMEB 2012", "Rock"),
+            ("Ya! 5.0 CIMEB AE 2018Rock", "Rock"),
+            ("JazzYa! 5.0 R Toro 2009Fusion", "JazzFusion"),
+            ("Ya! 5.0 Compartida HDRock", "Rock"),
+            ("RockYa! 5.0 Experimental HD", "Rock"),
+            ("Rock-Elenco Ya! 5.0 CIMEB 2012", "Rock"),
+        ];
+
+        for (genre, expected) in cases {
+            assert_eq!(normalize_imported_genre(genre), expected);
+        }
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_additional_edge_texts() {
+        let cases = [
+            ("Ya! 4.5 Experimental HDRock", "Rock"),
+            ("RockYa! 4.5 Experimental HD", "Rock"),
+            ("5  .0 Experimental HDJazz", "Jazz"),
+            ("Jazz5 .0 Experimental HD", "Jazz"),
+            ("Ya! 5.0 CompartidaRock", "Rock"),
+            ("RockYa! 5.0 Compartida", "Rock"),
+            ("Ya! Compartida HDRock", "Rock"),
+            ("RockYa! Compartida HD", "Rock"),
+            ("Ya! 5.0 R Compartida HDRock", "Rock"),
+            ("RockYa! 5.0 R Compartida HD", "Rock"),
+        ];
+
+        for (genre, expected) in cases {
+            assert_eq!(normalize_imported_genre(genre), expected);
+        }
+    }
+
+    #[test]
+    fn normalize_imported_genre_removes_nueva_and_ya_at_the_edges() {
+        let cases = [
+            ("Ya! 3.9 Experimental (nueva)Rock", "Rock"),
+            ("RockYa!  3.9  Experimental   (nueva)", "Rock"),
+            ("Ya!Rock", "Rock"),
+            ("RockYa!", "Rock"),
+            ("Lullaby Ya!", "Lullaby"),
+            ("Lullaby\u{00a0}Ya!\u{00a0}", "Lullaby"),
+            ("Ya!", ""),
         ];
 
         for (genre, expected) in cases {

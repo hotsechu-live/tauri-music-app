@@ -540,7 +540,17 @@ async function bootstrap() {
 
     if (target.dataset.action === "delete-collection") {
       const collectionId = Number(target.dataset.id);
-      const confirmed = window.confirm("¿Eliminar esta colección? Solo se borran los datos de la app, no los archivos.");
+      const collection = state.collections.find((item) => item.id === collectionId);
+      const collectionName = collection?.name ?? "esta colección";
+      const confirmed = await confirm(
+        `¿Quieres eliminar "${collectionName}"? Las canciones se borrarán de la app, pero los archivos permanecerán en el equipo.`,
+        {
+          title: "Confirmar eliminación",
+          kind: "warning",
+          okLabel: "Eliminar",
+          cancelLabel: "Cancelar",
+        },
+      );
       if (!confirmed) {
         return;
       }
