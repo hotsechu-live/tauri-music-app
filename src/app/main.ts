@@ -2,7 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
@@ -18,6 +18,7 @@ async function bootstrap() {
   let audioElement: HTMLAudioElement | null = null;
   let playbackStartedAt = 0;
   let playbackStartOffset = 0;
+  let playbackVolumeBeforeMute = 1;
 
   const refreshData = async () => {
     try {
@@ -133,6 +134,18 @@ async function bootstrap() {
     audioElement = null;
   };
 
+  const setPlaybackVolume = async (volume: number) => {
+    const nextVolume = Math.min(1, Math.max(0, volume));
+    state.playbackVolume = nextVolume;
+    if (nextVolume > 0) {
+      playbackVolumeBeforeMute = nextVolume;
+    }
+    if (audioElement) {
+      audioElement.volume = nextVolume;
+    }
+    await setNativeAudioVolume(nextVolume);
+  };
+
   const buildAudioSource = (filePath: string) => {
     // `convertFileSrc` accepts the path returned by the Rust backend in its
     // native form. Keeping Windows separators intact avoids changing the
@@ -210,6 +223,7 @@ async function bootstrap() {
     stopAudioPlayback();
     const audio = new Audio(buildAudioSource(song.file_path));
     audio.preload = "auto";
+    audio.volume = state.playbackVolume;
     audioElement = audio;
 
     audio.addEventListener("loadedmetadata", () => {
@@ -851,6 +865,12 @@ async function bootstrap() {
       }
       return;
     }
+
+    if (target.dataset.action === "playback-mute") {
+      await setPlaybackVolume(state.playbackVolume === 0 ? playbackVolumeBeforeMute : 0);
+      render();
+      return;
+    }
   });
 
   root.addEventListener("keydown", async (event) => {
@@ -878,6 +898,23 @@ async function bootstrap() {
         state.searchQuery = "";
         render();
       }
+    }
+
+    if (target.id === "playback-volume") {
+      const volume = Number(target.value) / 100;
+      target.setAttribute("aria-valuetext", `${target.value}%`);
+      target.title = `Volumen: ${target.value}%`;
+      const muteButton = root.querySelector<HTMLButtonElement>('[data-action="playback-mute"]');
+      if (muteButton) {
+        const muted = volume === 0;
+        muteButton.innerHTML = muted ? "&#128263;" : "&#128266;";
+        muteButton.ariaLabel = muted ? "Restaurar sonido" : "Silenciar";
+        muteButton.title = muted ? "Restaurar sonido" : "Silenciar";
+      }
+      void setPlaybackVolume(volume).catch((error) => {
+        state.error = `No se pudo cambiar el volumen: ${String(error)}`;
+        render();
+      });
     }
 
   });

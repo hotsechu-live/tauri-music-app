@@ -93,6 +93,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
   const playbackDuration = Math.max(0, state.currentPlaybackDuration);
   const playbackTime = Math.min(Math.max(0, state.currentPlaybackTime), playbackDuration || Infinity);
   const playbackProgress = playbackDuration > 0 ? (playbackTime / playbackDuration) * 100 : 0;
+  const playbackVolumePercent = Math.round(state.playbackVolume * 100);
   const collectionStatus = /^(Reproduciendo|Pausado(?::|$)|Reproducción finalizada|Detenido$)/.test(state.status)
     ? ""
     : state.status;
@@ -127,7 +128,11 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <div class="playback-progress" aria-label="Progreso de la reproducción">
           <time class="playback-time" datetime="PT${Math.floor(playbackTime)}S">${formatPlaybackTime(playbackTime)}</time>
           <progress value="${playbackProgress}" max="100" data-action="playback-seek" tabindex="0" aria-label="Progreso de la pista. Pulsa para cambiar la posición" aria-valuetext="${formatPlaybackTime(playbackTime)} de ${formatPlaybackTime(playbackDuration)}">${Math.round(playbackProgress)}%</progress>
-          <time class="playback-time" datetime="PT${Math.floor(playbackDuration)}S">${formatPlaybackTime(playbackDuration)}</time>
+          <time class="playback-time playback-duration" datetime="PT${Math.floor(playbackDuration)}S">${formatPlaybackTime(playbackDuration)}</time>
+          <div class="volume-control">
+            <button type="button" class="volume-button" data-action="playback-mute" aria-label="${state.playbackVolume === 0 ? "Restaurar sonido" : "Silenciar"}" title="${state.playbackVolume === 0 ? "Restaurar sonido" : "Silenciar"}">${state.playbackVolume === 0 ? "&#128263;" : "&#128266;"}</button>
+            <input id="playback-volume" type="range" min="0" max="100" step="1" value="${playbackVolumePercent}" aria-label="Volumen" aria-valuetext="${playbackVolumePercent}%" title="Volumen: ${playbackVolumePercent}%" />
+          </div>
         </div>
       </section>
 

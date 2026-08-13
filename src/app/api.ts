@@ -24,6 +24,10 @@ export async function seekNativeAudio(seconds: number) {
   return invoke<string>("seek_native_audio", { seconds });
 }
 
+export async function setNativeAudioVolume(volume: number) {
+  return invoke<string>("set_native_audio_volume", { volume });
+}
+
 export async function importCollection(folderPath: string, collectionName: string) {
   return invoke<{ imported: number; collection_id: number }>("import_collection", {
     folderPath,

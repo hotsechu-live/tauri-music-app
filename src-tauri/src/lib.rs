@@ -87,6 +87,14 @@ impl NativeAudioPlayer {
             .and_then(|session| session.SetPosition(position))
             .map_err(|error| format!("No se pudo cambiar la posiciÃ³n de reproducciÃ³n: {error}"))
     }
+
+    fn set_volume(&self, volume: f64) -> Result<(), String> {
+        self.player
+            .lock()
+            .map_err(|_| "El reproductor está ocupado.".to_string())?
+            .SetVolume(volume.clamp(0.0, 1.0))
+            .map_err(|error| format!("No se pudo cambiar el volumen: {error}"))
+    }
 }
 
 #[cfg(target_os = "linux")]
@@ -175,6 +183,14 @@ impl NativeAudioPlayer {
             .map_err(|_| "El reproductor está ocupado.".to_string())?
             .seek_simple(gst::SeekFlags::FLUSH | gst::SeekFlags::KEY_UNIT, position)
             .map_err(|error| format!("No se pudo cambiar la posición de reproducción: {error}"))
+    }
+
+    fn set_volume(&self, volume: f64) -> Result<(), String> {
+        self.player
+            .lock()
+            .map_err(|_| "El reproductor está ocupado.".to_string())?
+            .set_property("volume", volume.clamp(0.0, 1.0));
+        Ok(())
     }
 
     fn set_state(&self, state: gst::State, action: &str) -> Result<(), String> {
@@ -449,6 +465,16 @@ fn seek_native_audio(
 ) -> Result<String, String> {
     player.seek(seconds)?;
     Ok("PosiciÃ³n de reproducciÃ³n actualizada".to_string())
+}
+
+#[cfg(any(target_os = "windows", target_os = "linux"))]
+#[tauri::command]
+fn set_native_audio_volume(
+    player: tauri::State<'_, NativeAudioPlayer>,
+    volume: f64,
+) -> Result<String, String> {
+    player.set_volume(volume)?;
+    Ok("Volumen actualizado".to_string())
 }
 
 fn normalize_collection_folder_path(folder_path: &str) -> String {
@@ -1300,6 +1326,7 @@ pub fn run() {
             resume_native_audio,
             stop_native_audio,
             seek_native_audio,
+            set_native_audio_volume,
             import_collection,
             list_songs,
             list_collections,

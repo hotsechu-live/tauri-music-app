@@ -77,6 +77,7 @@ export type AppState = {
   playlistEditorMaximized: boolean;
   currentPlaybackTime: number;
   currentPlaybackDuration: number;
+  playbackVolume: number;
   selectedSongMetadata: CustomMetadata[];
   metadataDraftKey: string;
   metadataDraftValue: string;
@@ -117,6 +118,7 @@ export const createInitialState = (): AppState => ({
   currentPlaybackSongId: null,
   currentPlaybackTime: 0,
   currentPlaybackDuration: 0,
+  playbackVolume: 1,
   selectedSongMetadata: [],
   metadataDraftKey: "",
   metadataDraftValue: "",

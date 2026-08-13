@@ -201,7 +201,7 @@ button {
 
 .playback-progress {
   display: grid;
-  grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem;
+  grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem minmax(10rem, 13rem);
   align-items: center;
   gap: 0.75rem;
   flex: 1 0 100%;
@@ -228,8 +228,45 @@ button {
   line-height: 1;
 }
 
-.playback-time:last-child {
+.playback-duration {
   text-align: right;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.volume-button {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  background: transparent;
+  color: #4b5563;
+}
+
+.volume-control input[type="range"] {
+  width: 100%;
+  min-width: 0;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
+@media (max-width: 700px) {
+  .playback-progress {
+    grid-template-columns: 3.5rem minmax(0, 1fr) 3.5rem;
+  }
+
+  .volume-control {
+    grid-column: 1 / -1;
+    justify-self: end;
+    width: min(13rem, 100%);
+  }
 }
 
 .search-input-row {
