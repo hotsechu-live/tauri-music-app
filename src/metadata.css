@@ -50,7 +50,7 @@ button.danger { background: #dc2626; }
   border-radius: 7px;
   background: #f9fafb;
 }
-.message { min-height: 1.25rem; color: #047857; }
+.message { min-height: 1.25rem; color: #047857; font-size: 1rem; line-height: 1.5; }
 .message.error { color: #b91c1c; }
 .technical { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem 1rem; color: #4b5563; }
 .technical span { overflow-wrap: anywhere; }

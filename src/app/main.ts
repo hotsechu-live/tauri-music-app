@@ -2,7 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
@@ -24,9 +24,11 @@ async function bootstrap() {
       const songs = await listSongs();
       const collections = await listCollections();
       const playlists = await listPlaylists();
+      const customMetadataDefinitions = await listCustomMetadataDefinitions();
       state.songs = songs;
       state.collections = collections;
       state.playlists = playlists;
+      state.customMetadataDefinitions = customMetadataDefinitions;
       state.error = null;
       if (state.selectedPlaylistId) {
         const playlistSongs = await listPlaylistSongs(state.selectedPlaylistId);
@@ -57,40 +59,6 @@ async function bootstrap() {
       String(data.get("tags") ?? "") !== (state.playlistEditorTags ?? "") ||
       String(data.get("comment") ?? "") !== (state.playlistEditorComment ?? "")
     );
-  };
-
-  const playlistCreatorHasUnsavedChanges = () => {
-    const form = root.querySelector<HTMLFormElement>("#create-playlist-form");
-    if (!form || !state.playlistCreatorOpen) {
-      return false;
-    }
-
-    const data = new FormData(form);
-    return (
-      String(data.get("name") ?? "") !== "" ||
-      String(data.get("description") ?? "") !== ""
-    );
-  };
-
-  const closePlaylistCreator = async (confirmUnsavedChanges = true) => {
-    if (confirmUnsavedChanges && playlistCreatorHasUnsavedChanges()) {
-      const discardChanges = await confirm(
-        "Hay cambios sin guardar. ¿Quieres cerrar la ventana y descartarlos?",
-        {
-          title: "Cambios sin guardar",
-          kind: "warning",
-          okLabel: "Cerrar sin guardar",
-          cancelLabel: "Volver a la edición",
-        },
-      );
-      if (!discardChanges) {
-        return false;
-      }
-    }
-
-    state.playlistCreatorOpen = false;
-    render();
-    return true;
   };
 
   const closePlaylistEditor = async (confirmUnsavedChanges = true) => {
@@ -427,11 +395,6 @@ async function bootstrap() {
       return;
     }
 
-    if (target.dataset.action === "close-playlist-creator") {
-      event.stopImmediatePropagation();
-      await closePlaylistCreator();
-      return;
-    }
   }, true);
 
   root.addEventListener("click", async (event) => {
@@ -446,12 +409,6 @@ async function bootstrap() {
       return;
     }
 
-    if (target.dataset.action === "open-playlist-creator") {
-      state.playlistCreatorOpen = true;
-      render();
-      root.querySelector<HTMLInputElement>("#playlist-name")?.focus();
-      return;
-    }
 
     if (target.dataset.action === "open-about") {
       try {
@@ -686,34 +643,37 @@ async function bootstrap() {
       return;
     }
 
-    if (target.dataset.action === "open-metadata-manager") {
+    if (target.dataset.action === "rename-metadata-definition") {
+      const oldKey = target.dataset.key ?? "";
+      const row = target.closest<HTMLElement>("[data-metadata-key]");
+      const newKey = row?.querySelector<HTMLInputElement>("input")?.value.trim() ?? "";
+      if (!oldKey || !newKey) return;
+      const confirmed = await confirm(`¿Cambiar "${oldKey}" por "${newKey}" en todas las canciones?`, { title: "Confirmar modificación", kind: "warning" });
+      if (!confirmed) return;
       try {
-        const existingWindow = await WebviewWindow.getByLabel("metadata-manager");
-        if (existingWindow) {
-          await existingWindow.show();
-          await existingWindow.setFocus();
-        } else {
-          const metadataManagerWindow = new WebviewWindow("metadata-manager", {
-            url: "metadata-manager.html",
-            title: "Metadatos",
-            width: 620,
-            height: 560,
-            minWidth: 480,
-            minHeight: 420,
-            center: true,
-          });
-          await metadataManagerWindow.once("tauri://error", (error) => {
-            state.error = `No se pudo abrir la gestión de metadatos: ${String(error.payload)}`;
-            render();
-          });
-          await metadataManagerWindow.once("tauri://destroyed", () => {
-            void refreshData();
-          });
-        }
+        await renameCustomMetadataDefinition(oldKey, newKey);
+        state.status = "Metadato modificado en todas las canciones.";
+        await refreshData();
       } catch (error) {
-        state.error = `No se pudo abrir la gestión de metadatos: ${String(error)}`;
-        render();
+        state.error = error instanceof Error ? error.message : String(error);
       }
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "delete-metadata-definition") {
+      const key = target.dataset.key ?? "";
+      if (!key) return;
+      const confirmed = await confirm(`¿Eliminar "${key}" y todos sus valores de todas las canciones? Esta acción no se puede deshacer.`, { title: "Confirmar eliminación", kind: "warning" });
+      if (!confirmed) return;
+      try {
+        await deleteCustomMetadataDefinition(key);
+        state.status = "Metadato eliminado de todas las canciones.";
+        await refreshData();
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+      }
+      render();
       return;
     }
 
@@ -1003,7 +963,6 @@ async function bootstrap() {
       try {
         state.selectedPlaylistId = await createPlaylist(name, description);
         state.playlistSongs = [];
-        state.playlistCreatorOpen = false;
         state.status = `Lista creada: ${name}`;
         state.error = null;
         await refreshData();
@@ -1011,6 +970,24 @@ async function bootstrap() {
         state.error = error instanceof Error ? error.message : String(error);
         render();
       }
+      return;
+    }
+
+    if (form.id === "create-metadata-definition-form") {
+      event.preventDefault();
+      const data = new FormData(form);
+      const key = String(data.get("key") ?? "").trim();
+      if (!key) return;
+      const confirmed = await confirm(`¿Crear el metadato "${key}" para todas las canciones?`, { title: "Confirmar creación", kind: "warning" });
+      if (!confirmed) return;
+      try {
+        await createCustomMetadataDefinition(key);
+        state.status = "Metadato creado para todas las canciones.";
+        await refreshData();
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+      }
+      render();
       return;
     }
 

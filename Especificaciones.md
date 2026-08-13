@@ -135,7 +135,6 @@ La estructura sugerida debe ser similar a:
         ◦ almacenamiento de listas
         ◦ almacenamiento de canciones por lista
         ◦ almacenamiento del orden de reproducción
-        ◦ almacenamiento de configuración de la aplicación
 La aplicación debe diseñarse pensando en su mantenibilidad, la separación de responsabilidades y la facilidad de ampliación.
 
 ## Modelo de datos inicial
@@ -143,15 +142,11 @@ Diseña un esquema SQLite inicial que incluya, al menos, las siguientes entidade
     • canciones
     • cancion_custom_metadata
     • listas
-    • lista_custom_metadata
     • lista_canciones
-    • app_settings
 La tabla canciones debe contener la información básica y técnica de cada archivo de música.
 La tabla cancion_custom_metadata debe permitir asociar pares clave-valor a cada canción.
 La tabla listas debe contener la información principal de cada lista.
-La tabla lista_custom_metadata debe permitir asociar pares clave-valor a cada lista.
 La tabla lista_canciones debe relacionar listas con canciones e incluir el campo de posición para guardar el orden fijo de reproducción.
-La tabla app_settings debe guardar la configuración general, como el modo de reproducción por defecto y otras preferencias futuras.
 El esquema debe incluir claves primarias, claves foráneas, restricciones UNIQUE razonables, índices necesarios y borrados en cascada cuando corresponda.
 
 ## Comandos Tauri esperados

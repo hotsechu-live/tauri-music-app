@@ -93,6 +93,9 @@ export function renderApp(state: AppState, root: HTMLElement) {
   const playbackDuration = Math.max(0, state.currentPlaybackDuration);
   const playbackTime = Math.min(Math.max(0, state.currentPlaybackTime), playbackDuration || Infinity);
   const playbackProgress = playbackDuration > 0 ? (playbackTime / playbackDuration) * 100 : 0;
+  const collectionStatus = /^(Reproduciendo|Pausado(?::|$)|Reproducción finalizada|Detenido$)/.test(state.status)
+    ? ""
+    : state.status;
 
   root.innerHTML = `
     <section class="app-shell">
@@ -100,41 +103,11 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <button class="menu-item ${state.activeView === "songs" ? "active" : ""}" data-action="navigate" data-view="songs">Canciones</button>
         <button class="menu-item ${state.activeView === "collections" ? "active" : ""}" data-action="navigate" data-view="collections">Colecciones</button>
         <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas</button>
-        <button class="menu-item" data-action="open-metadata-manager">Metadatos</button>
+        <button class="menu-item ${state.activeView === "metadata" ? "active" : ""}" data-action="navigate" data-view="metadata">Metadatos</button>
         <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
       </nav>
 
-      <section class="panel ${state.activeView === "collections" ? "" : "hidden"}">
-        <div class="collection-import">
-          <h3>Importar colección</h3>
-          <button id="import-btn">Seleccionar carpeta de música</button>
-          <div id="collection-form" class="${state.selectedFolder ? "" : "hidden"}">
-            <p><strong>Carpeta seleccionada:</strong> ${escapeHtml(state.selectedFolder || "Ninguna")}</p>
-            <label for="collection-name">Nombre de la colección</label>
-            <input id="collection-name" type="text" placeholder="Nombre de la colección" />
-            <button id="confirm-import-btn">Importar colección</button>
-          </div>
-          <div id="status">${escapeHtml(state.status)}</div>
-          ${state.error ? `<div class="error">${escapeHtml(state.error)}</div>` : ""}
-        </div>
-        <h3>Colecciones guardadas</h3>
-        ${state.collections.length === 0 ? "<p>No hay colecciones todavía. Importa una carpeta para empezar.</p>" : `<ul class="collections-list">
-          ${state.collections
-            .map(
-              (collection) => `
-                <li>
-                  <strong>${escapeHtml(collection.name)}</strong>
-                  <span class="meta">${escapeHtml(collection.folder_path)}</span>
-                  <button data-action="rename-collection" data-id="${collection.id}">Renombrar</button>
-                  <button data-action="delete-collection" data-id="${collection.id}">Eliminar</button>
-                </li>
-              `,
-            )
-            .join("")}
-        </ul>`}
-      </section>
-
-      <section class="panel player-bar ${state.activeView === "songs" || state.activeView === "playlists" ? "" : "hidden"}" aria-label="Reproductor">
+      <section class="panel player-bar" aria-label="Reproductor">
         <div class="player-song" title="${currentSong ? escapeHtml(currentSongText) : "Sin canción seleccionada"}">
           ${currentSong ? escapeHtml(currentSongText) : "Sin canción"}
         </div>
@@ -156,6 +129,66 @@ export function renderApp(state: AppState, root: HTMLElement) {
           <progress value="${playbackProgress}" max="100" data-action="playback-seek" tabindex="0" aria-label="Progreso de la pista. Pulsa para cambiar la posición" aria-valuetext="${formatPlaybackTime(playbackTime)} de ${formatPlaybackTime(playbackDuration)}">${Math.round(playbackProgress)}%</progress>
           <time class="playback-time" datetime="PT${Math.floor(playbackDuration)}S">${formatPlaybackTime(playbackDuration)}</time>
         </div>
+      </section>
+
+      <section class="panel ${state.activeView === "collections" ? "" : "hidden"}">
+        <div class="collection-import">
+          <h3>Importar colección</h3>
+          <button id="import-btn">Seleccionar carpeta de música</button>
+          <div id="collection-form" class="${state.selectedFolder ? "" : "hidden"}">
+            <p><strong>Carpeta seleccionada:</strong> ${escapeHtml(state.selectedFolder || "Ninguna")}</p>
+            <label for="collection-name">Nombre de la colección</label>
+            <input id="collection-name" type="text" placeholder="Nombre de la colección" />
+            <button id="confirm-import-btn">Importar colección</button>
+          </div>
+          <div id="status" class="info-message">${escapeHtml(collectionStatus)}</div>
+          ${state.error ? `<div class="error">${escapeHtml(state.error)}</div>` : ""}
+        </div>
+        <h3>Colecciones guardadas</h3>
+        ${state.collections.length === 0 ? "<p>No hay colecciones todavía. Importa una carpeta para empezar.</p>" : `<ul class="collections-list">
+          ${state.collections
+            .map(
+              (collection) => `
+                <li>
+                  <div class="collection-item-actions">
+                    <button type="button" class="icon-button" data-action="rename-collection" data-id="${collection.id}" aria-label="Renombrar colección" title="Renombrar colección">&#9998;</button>
+                    <button type="button" class="icon-button danger" data-action="delete-collection" data-id="${collection.id}" aria-label="Eliminar colección" title="Eliminar colección">&#128465;</button>
+                  </div>
+                  <div class="collection-item-text">
+                    <strong>${escapeHtml(collection.name)}</strong>
+                    <span class="meta">${escapeHtml(collection.folder_path)}</span>
+                  </div>
+                </li>
+              `,
+            )
+            .join("")}
+        </ul>`}
+      </section>
+
+      <section class="panel metadata-panel ${state.activeView === "metadata" ? "" : "hidden"}">
+        ${state.status.startsWith("Metadato ") ? `<p class="info-message">${escapeHtml(state.status)}</p>` : ""}
+        ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ""}
+        <section class="metadata-card">
+          <h2>Crear metadato</h2>
+          <form id="create-metadata-definition-form" class="metadata-create-form">
+            <button type="submit" class="icon-button metadata-create-button" aria-label="Crear metadato" title="Crear metadato">+</button>
+            <input name="key" required placeholder="Nombre del metadato" aria-label="Nombre del metadato" />
+          </form>
+        </section>
+        <section class="metadata-card">
+          <h2>Metadatos personalizados</h2>
+          ${state.customMetadataDefinitions.length ? `<ul class="metadata-definitions-list">
+            ${state.customMetadataDefinitions.map((key) => `
+              <li data-metadata-key="${escapeHtml(key)}">
+                <div class="metadata-definition-actions">
+                  <button type="button" class="icon-button" data-action="rename-metadata-definition" data-key="${escapeHtml(key)}" aria-label="Modificar metadato ${escapeHtml(key)}" title="Modificar metadato">&#9998;</button>
+                  <button type="button" class="icon-button danger" data-action="delete-metadata-definition" data-key="${escapeHtml(key)}" aria-label="Eliminar metadato ${escapeHtml(key)}" title="Eliminar metadato">&#128465;</button>
+                </div>
+                <input value="${escapeHtml(key)}" aria-label="Nombre de ${escapeHtml(key)}" />
+              </li>
+            `).join("")}
+          </ul>` : "<p class=\"info-message\">No hay metadatos personalizados.</p>"}
+        </section>
       </section>
 
       <section class="panel songs-panel ${state.activeView === "songs" ? "" : "hidden"}">
@@ -205,7 +238,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         </div>
         <div class="action-row">
           <button id="play-filtered-btn">Reproducir filtradas</button>
-          <span>${filteredSongs.length} canciones visibles</span>
+          <span class="info-message">${filteredSongs.length} canciones visibles</span>
         </div>
         ${filteredSongs.length === 0 ? "<p>No hay canciones visibles con los filtros actuales.</p>" : `<table>
           <thead>
@@ -244,6 +277,14 @@ export function renderApp(state: AppState, root: HTMLElement) {
       </section>
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
+        <section class="playlist-create-card">
+          <h2>Crear nueva lista</h2>
+          <form id="create-playlist-form" class="playlist-create-form">
+            <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva lista" title="Crear nueva lista">+</button>
+            <input id="playlist-name" name="name" required placeholder="Nombre de la lista" aria-label="Nombre de la lista" />
+            <input name="description" placeholder="Descripción" aria-label="Descripción de la lista" />
+          </form>
+        </section>
         <div class="playlist-toolbar">
           <div class="playlist-selector">
             <select id="playlist-selector" aria-label="Lista seleccionada" ${state.playlists.length === 0 ? "disabled" : ""}>
@@ -253,7 +294,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
               `).join("")}
             </select>
           </div>
-          <button type="button" data-action="open-playlist-creator">Nueva lista</button>
         </div>
         ${state.playlists.length === 0 ? "<p>No hay listas todavía. Crea una lista para empezar.</p>" : ""}
         ${currentPlaylist ? `
@@ -276,7 +316,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 <p class="playlist-description">${escapeHtml(currentPlaylist.description || "Sin descripción")}</p>
               </div>
             </div>
-            ${state.playlistSongs.length === 0 ? "<p>Esta lista todavía no contiene canciones.</p>" : ""}
+            ${state.playlistSongs.length === 0 ? "<p class=\"info-message\">Esta lista todavía no contiene canciones.</p>" : ""}
             <ul class="playlist-songs">
               ${state.playlistSongs
                 .map(
@@ -303,28 +343,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
           </div>
         ` : ""}
       </section>
-
-      <div class="modal-backdrop ${state.playlistCreatorOpen ? "" : "hidden"}" data-action="close-playlist-creator">
-        <div class="modal playlist-creator-modal" role="dialog" aria-modal="true" aria-labelledby="create-playlist-title" onclick="event.stopPropagation()">
-          <form id="create-playlist-form" class="modal-form">
-            <div class="modal-title-bar">
-              <h2 id="create-playlist-title">Nueva lista</h2>
-            </div>
-            <label>
-              Nombre
-              <input id="playlist-name" name="name" required autofocus />
-            </label>
-            <label>
-              Descripción
-              <input name="description" />
-            </label>
-            <div class="modal-actions">
-              <button type="button" class="secondary" data-action="close-playlist-creator">Cancelar</button>
-              <button type="submit">Crear lista</button>
-            </div>
-          </form>
-        </div>
-      </div>
 
       <div class="modal-backdrop ${state.playlistEditorOpen ? "" : "hidden"}" data-action="close-playlist-editor">
         <div class="modal${state.playlistEditorMaximized ? " maximized" : ""}" role="dialog" aria-modal="true" aria-labelledby="edit-playlist-title" onclick="event.stopPropagation()">

@@ -120,6 +120,13 @@ button {
   margin-top: 0.5rem;
 }
 
+.info-message {
+  min-height: 1.25rem;
+  color: #047857;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
 .filter-row,
 .action-row,
 .inline-actions,
@@ -328,11 +335,78 @@ button {
 
 .collections-list li {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
   align-items: center;
+  gap: 0.75rem;
   border-bottom: 1px solid #e5e7eb;
   padding-bottom: 0.5rem;
+}
+
+.collection-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.collection-item-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.collection-item-text .meta {
+  overflow-wrap: anywhere;
+}
+
+.metadata-card {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.metadata-card h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.metadata-create-form,
+.metadata-definitions-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.metadata-create-form input,
+.metadata-definitions-list li > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.metadata-create-button {
+  flex-shrink: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.metadata-definitions-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.metadata-definitions-list li {
+  padding-block: 0.25rem;
+}
+
+.metadata-definition-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 
 .playlist-songs li {
@@ -371,6 +445,31 @@ button {
   padding-bottom: 1rem;
   border-bottom: 1px solid #e5e7eb;
   flex-wrap: wrap;
+}
+
+.playlist-create-card {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.playlist-create-card h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.playlist-create-form {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.playlist-create-button {
+  font-size: 1.2rem;
+  font-weight: 700;
 }
 
 .playlist-selector {
@@ -481,6 +580,14 @@ button {
 @media (max-width: 760px) {
   .playlist-toolbar {
     width: 100%;
+  }
+
+  .playlist-create-form {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .playlist-create-form input[name="description"] {
+    grid-column: 2;
   }
 
   .playlist-songs li {
@@ -687,12 +794,6 @@ button.secondary {
   height: 100%;
   fill: currentColor;
   pointer-events: none;
-}
-
-.playlist-creator-modal {
-  width: min(100%, 520px);
-  min-height: 0;
-  resize: none;
 }
 
 .modal-form textarea {

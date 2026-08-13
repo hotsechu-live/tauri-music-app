@@ -41,7 +41,7 @@ function render(message = "", isError = false) {
             <button type="button" class="danger" data-action="delete">Eliminar</button>
           </li>
         `).join("")}
-      </ul>` : "<p>No hay metadatos personalizados.</p>"}
+      </ul>` : "<p class=\"message\">No hay metadatos personalizados.</p>"}
     </section>
   `;
 }

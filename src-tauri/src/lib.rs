@@ -283,6 +283,10 @@ fn open_connection() -> Result<Connection> {
 fn init_schema(conn: &Connection) -> Result<()> {
     conn.execute_batch(
         r#"
+        DROP TABLE IF EXISTS collection_analysis;
+        DROP TABLE IF EXISTS playlist_custom_metadata;
+        DROP TABLE IF EXISTS app_settings;
+
         CREATE TABLE IF NOT EXISTS collections (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
@@ -340,28 +344,9 @@ fn init_schema(conn: &Connection) -> Result<()> {
             key TEXT PRIMARY KEY
         );
 
-        CREATE TABLE IF NOT EXISTS playlist_custom_metadata (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            playlist_id INTEGER NOT NULL,
-            key TEXT NOT NULL,
-            value TEXT NOT NULL,
-            FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
-            UNIQUE(playlist_id, key)
-        );
-
-        CREATE TABLE IF NOT EXISTS app_settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        );
-
         CREATE INDEX IF NOT EXISTS idx_songs_collection_id ON songs(collection_id);
         CREATE INDEX IF NOT EXISTS idx_playlist_songs_playlist_id ON playlist_songs(playlist_id, position);
         "#,
-    )?;
-
-    conn.execute(
-        "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?1, ?2)",
-        params!["default_playback_mode", "manual"],
     )?;
 
     conn.execute(

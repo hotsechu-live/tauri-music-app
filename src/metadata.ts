@@ -86,7 +86,7 @@ function render(message = "", isError = false) {
             </li>
           `).join("")}
         </ul>
-      ` : "<p>No hay metadatos personalizados.</p>"}
+      ` : "<p class=\"message\">No hay metadatos personalizados.</p>"}
     </section>
   `;
 }
