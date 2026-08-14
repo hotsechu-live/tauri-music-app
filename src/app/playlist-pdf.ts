@@ -52,12 +52,14 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
   let y = 0;
 
   const addPageHeader = () => {
-    doc.setFillColor(24, 35, 52);
-    doc.rect(0, 0, PAGE_WIDTH, 25, "F");
-    doc.setTextColor(255, 255, 255);
+    doc.setTextColor(31, 51, 73);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(playlist.name, MARGIN, 15.5);
+    doc.setFontSize(18);
+    const title = doc.splitTextToSize(playlist.name, CONTENT_WIDTH) as string[];
+    doc.text(title[0] || "Lista de reproducción", MARGIN, 15.5);
+    doc.setDrawColor(245, 180, 45);
+    doc.setLineWidth(1.2);
+    doc.line(MARGIN, 21, PAGE_WIDTH - MARGIN, 21);
     y = 34;
   };
 
@@ -150,7 +152,15 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
       ? doc.splitTextToSize(detailParts.join(" · "), CONTENT_WIDTH - 28) as string[]
       : [];
     const metadataRows = metadataLines.flatMap((line) => doc.splitTextToSize(line, CONTENT_WIDTH - 28) as string[]);
-    const cardHeight = Math.max(20, 9 + titleRows.length * 4 + detailRows.length * 3.8 + (metadataRows.length ? metadataRows.length * 3.5 + 2 : 0));
+    const consignaRows = song.consigna.trim()
+      ? doc.splitTextToSize(song.consigna.trim(), CONTENT_WIDTH - 28) as string[]
+      : [];
+    const cardHeight = Math.max(
+      20,
+      9 + titleRows.length * 4 + detailRows.length * 3.8
+        + (metadataRows.length ? metadataRows.length * 3.5 + 2 : 0)
+        + (consignaRows.length ? consignaRows.length * 4 + 5 : 0),
+    );
     ensureSpace(cardHeight + 3);
 
     doc.setFillColor(index % 2 === 0 ? 248 : 243, index % 2 === 0 ? 250 : 247, index % 2 === 0 ? 252 : 250);
@@ -185,6 +195,17 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
     if (metadataRows.length) {
       doc.setTextColor(67, 56, 202);
       doc.text(metadataRows, contentX, cardY);
+      cardY += metadataRows.length * 3.5 + 1;
+    }
+    if (consignaRows.length) {
+      doc.setDrawColor(191, 201, 214);
+      doc.setLineWidth(0.25);
+      doc.line(contentX, cardY, MARGIN + CONTENT_WIDTH - 5, cardY);
+      cardY += 4;
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(8.5);
+      doc.setTextColor(78, 92, 108);
+      doc.text(consignaRows, contentX, cardY);
     }
     y += cardHeight + 3;
   });

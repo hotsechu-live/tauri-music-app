@@ -11,6 +11,7 @@ export type Song = {
   format: string;
   file_size: number | null;
   file_path: string;
+  consigna: string;
   custom_metadata: CustomMetadata[];
 };
 

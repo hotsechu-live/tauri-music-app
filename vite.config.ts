@@ -13,6 +13,7 @@ export default defineConfig(async () => ({
         metadata: resolve(__dirname, "metadata.html"),
         metadataManager: resolve(__dirname, "metadata-manager.html"),
         addToPlaylist: resolve(__dirname, "add-to-playlist.html"),
+        editConsigna: resolve(__dirname, "edit-consigna.html"),
       },
     },
   },

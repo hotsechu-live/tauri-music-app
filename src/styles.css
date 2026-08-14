@@ -455,6 +455,20 @@ button {
   padding: 0.75rem 0;
 }
 
+.playlist-song-consigna {
+  grid-column: 1 / -1;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 0.95rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .playlist-song-main {
   display: flex;
   align-items: center;

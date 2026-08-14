@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": ["main", "about", "metadata-*", "metadata-manager", "add-to-playlist-*"],
+  "windows": ["main", "about", "metadata-*", "metadata-manager", "add-to-playlist-*", "edit-consigna-*"],
   "permissions": [
     "core:default",
     "core:webview:allow-create-webview-window",

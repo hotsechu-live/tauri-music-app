@@ -217,6 +217,7 @@ struct SongRecord {
     format: String,
     file_size: Option<i64>,
     file_path: String,
+    consigna: String,
     custom_metadata: Vec<CustomMetadataRecord>,
 }
 
@@ -342,6 +343,7 @@ fn init_schema(conn: &Connection) -> Result<()> {
             playlist_id INTEGER NOT NULL,
             song_id INTEGER NOT NULL,
             position INTEGER NOT NULL,
+            consigna TEXT NOT NULL DEFAULT '',
             UNIQUE(playlist_id, song_id),
             FOREIGN KEY(playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
             FOREIGN KEY(song_id) REFERENCES songs(id) ON DELETE CASCADE
@@ -377,6 +379,23 @@ fn init_schema(conn: &Connection) -> Result<()> {
     )?;
 
     ensure_playlist_columns(&conn)?;
+    ensure_playlist_song_columns(&conn)?;
+    Ok(())
+}
+
+fn ensure_playlist_song_columns(conn: &Connection) -> Result<()> {
+    let mut stmt = conn.prepare("PRAGMA table_info('playlist_songs')")?;
+    let columns: Vec<String> = stmt
+        .query_map([], |row| row.get(1))?
+        .collect::<Result<_, _>>()?;
+
+    if !columns.contains(&"consigna".to_string()) {
+        conn.execute(
+            "ALTER TABLE playlist_songs ADD COLUMN consigna TEXT NOT NULL DEFAULT ''",
+            [],
+        )?;
+    }
+
     Ok(())
 }
 
@@ -734,6 +753,7 @@ fn map_song_row(row: &rusqlite::Row) -> rusqlite::Result<SongRecord> {
         format: row.get(9)?,
         file_size: row.get(10)?,
         file_path: row.get(11)?,
+        consigna: String::new(),
         custom_metadata: Vec::new(),
     })
 }
@@ -890,7 +910,7 @@ fn add_song_to_playlist(playlist_id: i64, song_id: i64) -> Result<String, String
         .map_err(|e| e.to_string())?;
 
     conn.execute(
-        "INSERT INTO playlist_songs (playlist_id, song_id, position) VALUES (?1, ?2, ?3)",
+        "INSERT INTO playlist_songs (playlist_id, song_id, position, consigna) VALUES (?1, ?2, ?3, '')",
         params![playlist_id, song_id, position],
     )
     .map_err(|e| e.to_string())?;
@@ -935,6 +955,25 @@ fn reorder_playlist_songs(playlist_id: i64, song_order: Vec<i64>) -> Result<Stri
             params![(index as i64) + 1, playlist_id, song_id],
         )
         .map_err(|e| e.to_string())?;
+    }
+    Ok("ok".to_string())
+}
+
+#[command]
+fn update_playlist_song_consigna(
+    playlist_id: i64,
+    song_id: i64,
+    consigna: String,
+) -> Result<String, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    let updated = conn
+        .execute(
+            "UPDATE playlist_songs SET consigna = ?1 WHERE playlist_id = ?2 AND song_id = ?3",
+            params![consigna, playlist_id, song_id],
+        )
+        .map_err(|e| e.to_string())?;
+    if updated == 0 {
+        return Err("La canción ya no pertenece a esta lista.".to_string());
     }
     Ok("ok".to_string())
 }
@@ -1070,7 +1109,7 @@ fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
 fn list_playlist_songs(playlist_id: i64) -> Result<Vec<SongRecord>, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare(
-        "SELECT s.id, s.collection_id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path FROM playlist_songs ps JOIN songs s ON s.id = ps.song_id JOIN collections c ON c.id = s.collection_id WHERE ps.playlist_id = ?1 ORDER BY ps.position"
+        "SELECT s.id, s.collection_id, c.name, s.title, s.artist, s.album, s.genre, s.year, s.duration_seconds, s.format, s.file_size, s.file_path, ps.consigna FROM playlist_songs ps JOIN songs s ON s.id = ps.song_id JOIN collections c ON c.id = s.collection_id WHERE ps.playlist_id = ?1 ORDER BY ps.position"
     ).map_err(|e| e.to_string())?;
     let rows = stmt.query_map(params![playlist_id], |row| {
         Ok(SongRecord {
@@ -1086,6 +1125,7 @@ fn list_playlist_songs(playlist_id: i64) -> Result<Vec<SongRecord>, String> {
             format: row.get(9)?,
             file_size: row.get(10)?,
             file_path: row.get(11)?,
+            consigna: row.get(12)?,
             custom_metadata: Vec::new(),
         })
     }).map_err(|e| e.to_string())?;
@@ -1461,6 +1501,7 @@ pub fn run() {
             add_song_to_playlist,
             remove_song_from_playlist,
             reorder_playlist_songs,
+            update_playlist_song_consigna,
             list_song_custom_metadata,
             update_song_metadata,
             set_song_custom_metadata,

@@ -89,7 +89,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
     ? [currentSong.title.trim(), currentSong.artist.trim()].filter(Boolean).join(" - ")
     : "";
   const currentPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId) ?? null;
-  const playbackPlaylist = state.playlists.find((playlist) => playlist.id === state.playbackPlaylistId) ?? null;
   const playbackDuration = Math.max(0, state.currentPlaybackDuration);
   const playbackTime = Math.min(Math.max(0, state.currentPlaybackTime), playbackDuration || Infinity);
   const playbackProgress = playbackDuration > 0 ? (playbackTime / playbackDuration) * 100 : 0;
@@ -112,8 +111,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <div class="player-song" title="${currentSong ? escapeHtml(currentSongText) : "Sin canción seleccionada"}">
           ${currentSong ? escapeHtml(currentSongText) : "Sin canción"}
         </div>
-        <div class="player-playlist" title="${playbackPlaylist ? escapeHtml(playbackPlaylist.name) : "Sin lista"}">
-          ${playbackPlaylist ? escapeHtml(playbackPlaylist.name) : "Sin lista"}
+        <div class="player-playlist" title="${currentSong ? escapeHtml(currentSong.collection_name) : "Sin colección"}">
+          ${currentSong ? escapeHtml(currentSong.collection_name) : "Sin colección"}
         </div>
         <div class="player-controls">
           <button class="player-button" data-action="playback-prev" aria-label="Canción anterior" title="Canción anterior">&#10072;&#9664;</button>
@@ -338,8 +337,10 @@ export function renderApp(state: AppState, root: HTMLElement) {
                       <div class="inline-actions">
                         <button type="button" class="icon-button" data-action="playlist-move-up" data-index="${index}" aria-label="Mover arriba" title="Mover arriba">↑</button>
                         <button type="button" class="icon-button" data-action="playlist-move-down" data-index="${index}" aria-label="Mover abajo" title="Mover abajo">↓</button>
+                        <button type="button" class="icon-button" data-action="edit-song-consigna" data-song-id="${song.id}" aria-label="Modificar consigna" title="Modificar consigna">&#9998;</button>
                         <button type="button" class="icon-button danger" data-action="remove-song-from-playlist" data-song-id="${song.id}" aria-label="Quitar canción" title="Quitar canción">&#128465;</button>
                       </div>
+                      <div class="playlist-song-consigna">${escapeHtml(song.consigna || "—")}</div>
                     </li>
                   `,
                 )

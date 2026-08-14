@@ -719,6 +719,37 @@ async function bootstrap() {
       return;
     }
 
+    if (target.dataset.action === "edit-song-consigna") {
+      const songId = Number(target.dataset.songId);
+      const playlistId = state.selectedPlaylistId;
+      if (!playlistId) return;
+      try {
+        const label = `edit-consigna-${playlistId}-${songId}`;
+        const existingWindow = await WebviewWindow.getByLabel(label);
+        if (existingWindow) {
+          await existingWindow.show();
+          await existingWindow.setFocus();
+        } else {
+          const consignaWindow = new WebviewWindow(label, {
+            url: `edit-consigna.html?playlistId=${playlistId}&songId=${songId}`,
+            title: "Modificar consigna",
+            width: 560,
+            height: 430,
+            resizable: true,
+            center: true,
+          });
+          await consignaWindow.once("tauri://error", (error) => {
+            state.error = `No se pudo abrir la ventana de consigna: ${String(error.payload)}`;
+            render();
+          });
+        }
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+        render();
+      }
+      return;
+    }
+
     if (target.dataset.action === "add-song-to-playlist") {
       const songId = Number(target.dataset.songId);
       try {

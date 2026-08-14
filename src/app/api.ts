@@ -91,6 +91,10 @@ export async function reorderPlaylistSongs(playlistId: number, songOrder: number
   return invoke<string>("reorder_playlist_songs", { playlistId, songOrder });
 }
 
+export async function updatePlaylistSongConsigna(playlistId: number, songId: number, consigna: string) {
+  return invoke<string>("update_playlist_song_consigna", { playlistId, songId, consigna });
+}
+
 export async function listPlaylists() {
   return invoke<any[]>("list_playlists");
 }
