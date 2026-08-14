@@ -935,6 +935,12 @@ async function bootstrap() {
       return;
     }
 
+    const collectionFilterSummary = target.closest(".collection-filter > summary");
+    if (collectionFilterSummary) {
+      const collectionFilter = collectionFilterSummary.parentElement as HTMLDetailsElement;
+      state.collectionFilterOpen = !collectionFilter.open;
+    }
+
     if (target.id === "search-submit") {
       state.searchQuery = state.pendingSearchQuery;
       render();

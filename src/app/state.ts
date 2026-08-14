@@ -49,6 +49,7 @@ export type AppState = {
   collections: Collection[];
   customMetadataDefinitions: string[];
   selectedCollectionIds: number[];
+  collectionFilterOpen: boolean;
   searchQuery: string;
   pendingSearchQuery: string;
   searchField: string;
@@ -90,6 +91,7 @@ export const createInitialState = (): AppState => ({
   collections: [],
   customMetadataDefinitions: [],
   selectedCollectionIds: [],
+  collectionFilterOpen: false,
   searchQuery: "",
   pendingSearchQuery: "",
   searchField: "",

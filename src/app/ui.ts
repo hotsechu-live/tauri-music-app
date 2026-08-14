@@ -217,7 +217,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
               })
               .join("")}
           </select>
-          <details class="collection-filter" ${state.selectedCollectionIds.length > 0 ? "open" : ""}>
+          <details class="collection-filter" ${state.collectionFilterOpen ? "open" : ""}>
             <summary aria-label="Filtrar por colecciones">
               ${state.selectedCollectionIds.length === 0
                 ? "Todas las colecciones"
