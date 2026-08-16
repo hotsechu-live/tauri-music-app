@@ -30,6 +30,12 @@ async function bootstrap() {
       state.collections = collections;
       state.playlists = playlists;
       state.customMetadataDefinitions = customMetadataDefinitions;
+      if (
+        state.searchField.startsWith("custom:")
+        && !customMetadataDefinitions.includes(state.searchField.slice("custom:".length))
+      ) {
+        state.searchField = "";
+      }
       state.error = null;
       if (state.selectedPlaylistId) {
         const playlistSongs = await listPlaylistSongs(state.selectedPlaylistId);
