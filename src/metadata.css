@@ -36,6 +36,16 @@ button {
   cursor: pointer;
 }
 button.danger { background: #dc2626; }
+button {
+  color: #111827;
+  background: white;
+  border: 1px solid #d1d5db;
+  font: inherit;
+}
+button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
 .actions { display: flex; justify-content: flex-end; margin-top: .85rem; }
 .custom-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: .5rem; }
 .manager-create-form { grid-template-columns: 1fr auto; }

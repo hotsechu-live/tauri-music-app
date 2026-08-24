@@ -56,13 +56,13 @@ body {
 .menu-item {
   background: transparent;
   color: #1f2937;
-  border: 1px solid transparent;
+  border: none;
   border-radius: 2px;
-  padding: 2px 10px;
-  min-height: 24px;
+  padding: 1px 8px;
+  min-height: 20px;
   font-family: "Segoe UI", sans-serif;
-  font-size: 13px;
-  line-height: 18px;
+  font-size: 12px;
+  line-height: 16px;
   white-space: nowrap;
 }
 
@@ -70,7 +70,6 @@ body {
 .menu-item.active {
   background: #e5f1fb;
   color: #111827;
-  border-color: #99c9ef;
 }
 
 .menu-item-secondary {
@@ -415,6 +414,11 @@ button {
   gap: 0.5rem;
 }
 
+.metadata-create-help {
+  margin-top: 0;
+  color: #4b5563;
+}
+
 .metadata-create-form input,
 .metadata-definitions-list li > input {
   flex: 1;
@@ -423,8 +427,6 @@ button {
 
 .metadata-create-button {
   flex-shrink: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
 }
 
 .metadata-definitions-list {
@@ -506,11 +508,6 @@ button {
   border: 1px solid #e5e7eb;
 }
 
-.playlist-create-card h2 {
-  margin-top: 0;
-  font-size: 1.1rem;
-}
-
 .playlist-create-form {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
@@ -519,8 +516,7 @@ button {
 }
 
 .playlist-create-button {
-  font-size: 1.2rem;
-  font-weight: 700;
+  white-space: nowrap;
 }
 
 .playlist-selector {
@@ -631,14 +627,6 @@ button {
 @media (max-width: 760px) {
   .playlist-toolbar {
     width: 100%;
-  }
-
-  .playlist-create-form {
-    grid-template-columns: auto minmax(0, 1fr);
-  }
-
-  .playlist-create-form input[name="description"] {
-    grid-column: 2;
   }
 
   .playlist-songs li {
@@ -757,6 +745,19 @@ button.secondary {
   background: #f3f4f6;
   color: #111827;
   border-color: #d1d5db;
+}
+
+/* Match every action to the neutral appearance of the select controls. */
+button:not(.icon-button.danger):not(.menu-item) {
+  background: white;
+  color: #111827;
+  border: 1px solid #d1d5db;
+  font: inherit;
+}
+
+button:not(.icon-button.danger):not(.menu-item):hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
 }
 
 .modal-backdrop {

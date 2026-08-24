@@ -173,9 +173,9 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ${state.status.startsWith("Metadato ") ? `<p class="info-message">${escapeHtml(state.status)}</p>` : ""}
         ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ""}
         <section class="metadata-card">
-          <h2>Crear metadato</h2>
+          <p class="metadata-create-help">Los metadatos personalizados que se creen podrán gestionarse en la ventana de canciones, cuando se acceda a la ventana de modificación de la canción.</p>
           <form id="create-metadata-definition-form" class="metadata-create-form">
-            <button type="submit" class="icon-button metadata-create-button" aria-label="Crear metadato" title="Crear metadato">+</button>
+            <button type="submit" class="icon-button metadata-create-button">Crear nuevo metadato</button>
             <input name="key" required placeholder="Nombre del metadato" aria-label="Nombre del metadato" />
           </form>
         </section>
@@ -282,9 +282,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
         <section class="playlist-create-card">
-          <h2>Crear nueva lista</h2>
           <form id="create-playlist-form" class="playlist-create-form">
-            <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva lista" title="Crear nueva lista">+</button>
+            <button type="submit" class="icon-button playlist-create-button">Crear nueva lista</button>
             <input id="playlist-name" name="name" required placeholder="Nombre de la lista" aria-label="Nombre de la lista" />
             <input name="description" placeholder="Descripción" aria-label="Descripción de la lista" />
           </form>
