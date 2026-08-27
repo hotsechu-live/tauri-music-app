@@ -825,7 +825,8 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   min-width: 0;
 }
 
-.pdf-export-button {
+.pdf-export-button,
+.odf-export-button {
   width: 2rem;
   height: 2rem;
   padding: 0.35rem;
@@ -841,6 +842,25 @@ button:not(.icon-button.danger):not(.menu-item):hover {
 }
 
 .pdf-export-button svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+.odf-export-button {
+  color: #16844a;
+  background: #fff;
+  border: 1px solid #a7e3c1;
+}
+
+.odf-export-button:hover {
+  color: #fff;
+  background: #16844a;
+}
+
+.odf-export-button svg {
   display: block;
   width: 100%;
   height: 100%;

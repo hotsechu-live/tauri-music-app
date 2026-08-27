@@ -313,6 +313,9 @@ export function renderApp(state: AppState, root: HTMLElement) {
                     <button type="button" class="icon-button pdf-export-button" data-action="export-playlist-pdf" aria-label="Exportar lista a PDF" title="Exportar lista a PDF">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h8l4 4v16H6V2Zm7 1.8V7h3.2L13 3.8ZM8.3 18h1.4v-2h.8c1.4 0 2.3-.8 2.3-2.1 0-1.3-.9-2.1-2.3-2.1H8.3V18Zm1.4-3.2V13h.7c.6 0 1 .3 1 .9s-.4.9-1 .9h-.7Zm3.8 3.2h2c1.7 0 2.8-1.2 2.8-3.1 0-1.9-1.1-3.1-2.8-3.1h-2V18Zm1.4-1.2V13h.5c.9 0 1.5.7 1.5 1.9 0 1.2-.6 1.9-1.5 1.9h-.5Z"/></svg>
                     </button>
+                    <button type="button" class="icon-button odf-export-button" data-action="export-playlist-odf" aria-label="Exportar lista a LibreOffice (ODF)" title="Exportar lista a LibreOffice (ODF)">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 2h9.2L19 6.8V12h-2V7.7h-3.7V4H7v16h5v2H5V2Zm10.3 2.6V6h1.4l-1.4-1.4Z"/><path d="M18.2 12.2a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6Z"/><path d="M18.2 15.4a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6Z"/></svg>
+                    </button>
                   </div>
                   <span class="playlist-duration">${escapeHtml(currentPlaylist.duration || "00:00:00")}</span>
                 </div>
