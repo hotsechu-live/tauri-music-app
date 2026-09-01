@@ -457,8 +457,17 @@ button {
   padding: 0.75rem 0;
 }
 
-.playlist-song-consigna {
+.playlist-song-consigna-row {
   grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.playlist-song-consigna {
+  flex: 1;
+  min-width: 0;
   width: 100%;
   box-sizing: border-box;
   padding: 0.55rem 0.7rem;
@@ -782,6 +791,18 @@ button:not(.icon-button.danger):not(.menu-item) {
 button:not(.icon-button.danger):not(.menu-item):hover {
   background: #f3f4f6;
   border-color: #9ca3af;
+}
+
+#edit-playlist-form .playlist-save-button {
+  color: #14532d;
+  background: #bbf7d0;
+  border-color: #86efac;
+  font-weight: 700;
+}
+
+#edit-playlist-form .playlist-save-button:hover {
+  background: #86efac;
+  border-color: #4ade80;
 }
 
 .modal-backdrop {

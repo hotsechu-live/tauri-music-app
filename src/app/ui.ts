@@ -359,10 +359,12 @@ export function renderApp(state: AppState, root: HTMLElement) {
                       <div class="inline-actions">
                         <button type="button" class="icon-button" data-action="playlist-move-up" data-index="${index}" aria-label="Mover arriba" title="Mover arriba">↑</button>
                         <button type="button" class="icon-button" data-action="playlist-move-down" data-index="${index}" aria-label="Mover abajo" title="Mover abajo">↓</button>
-                        <button type="button" class="icon-button" data-action="edit-song-consigna" data-song-id="${song.id}" aria-label="Modificar consigna" title="Modificar consigna">&#9998;</button>
                         <button type="button" class="icon-button danger" data-action="remove-song-from-playlist" data-song-id="${song.id}" aria-label="Quitar canción" title="Quitar canción">&#128465;</button>
                       </div>
-                      <div class="playlist-song-consigna">${escapeHtml(song.consigna || "—")}</div>
+                      <div class="playlist-song-consigna-row">
+                        <button type="button" class="icon-button" data-action="edit-song-consigna" data-song-id="${song.id}" aria-label="Modificar consigna" title="Modificar consigna">&#9998;</button>
+                        <div class="playlist-song-consigna">${escapeHtml(song.consigna || "—")}</div>
+                      </div>
                     </li>
                   `,
                 )
@@ -436,7 +438,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
             </div>
             <div class="modal-actions">
               <button type="button" class="secondary" data-action="close-playlist-editor">Cancelar</button>
-              <button type="submit">Guardar</button>
+              <button type="submit" class="playlist-save-button">Guardar</button>
             </div>
           </form>
         </div>

@@ -21,7 +21,6 @@ function render(message = "", isError = false) {
     return;
   }
   root.innerHTML = `
-    <h1>Modificar consigna</h1>
     <p class="subtitle">${escapeHtml(song.title)} · ${escapeHtml(song.artist)}</p>
     ${message ? `<p class="message ${isError ? "error" : ""}">${escapeHtml(message)}</p>` : ""}
     <form id="consigna-form" class="card">
