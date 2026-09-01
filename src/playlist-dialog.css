@@ -2,12 +2,13 @@
 body { margin: 0; }
 #playlist-dialog { padding: 1rem; }
 h1 { margin: 0 0 0.25rem; font-size: 1.35rem; }
-.subtitle { color: #6b7280; }
+.subtitle { color: #6b7280; font-weight: 700; }
 .message { min-height: 1.25rem; color: #047857; font-size: 1rem; line-height: 1.5; }
 .message.error { color: #b91c1c; }
 .card { display: grid; gap: 0.75rem; margin-top: 1rem; padding: 1rem; background: white; border-radius: 12px; box-shadow: 0 1px 3px rgb(0 0 0 / 8%); }
 label { display: grid; gap: 0.35rem; font-weight: 600; }
 input, select, textarea, button { box-sizing: border-box; width: 100%; padding: 0.65rem 0.8rem; border: 1px solid #d1d5db; border-radius: 8px; font: inherit; }
+#create-form input { font-weight: 400; }
 textarea { resize: vertical; min-height: 8rem; }
 button { border: 0; color: white; background: #2563eb; cursor: pointer; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 0.75rem; }
@@ -22,5 +23,17 @@ button {
 button:hover {
   background: #f3f4f6;
   border-color: #9ca3af;
+}
+#add-form button,
+#create-form button {
+  color: #14532d;
+  background: #bbf7d0;
+  border-color: #86efac;
+  font-weight: 700;
+}
+#add-form button:hover,
+#create-form button:hover {
+  background: #86efac;
+  border-color: #4ade80;
 }
 .error { color: #b91c1c; }

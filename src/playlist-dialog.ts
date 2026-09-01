@@ -18,24 +18,21 @@ function escapeHtml(value: string | null | undefined) {
 function render(message = "", isError = false) {
   if (!root) return;
   root.innerHTML = `
-    <h1>Añadir a una lista</h1>
     <p class="subtitle">${song ? escapeHtml(song.title) : "Cargando canción…"}</p>
     ${message ? `<p class="message ${isError ? "error" : ""}">${escapeHtml(message)}</p>` : ""}
     <form id="add-form" class="card">
-      <label>Lista seleccionada
-        <select name="playlistId" ${playlists.length === 0 ? "disabled" : ""}>
-          <option value="">Selecciona una lista</option>
-          ${playlists.map((playlist) => `<option value="${playlist.id}" ${playlist.id === selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}</option>`).join("")}
-        </select>
-      </label>
-      <button type="submit" ${playlists.length === 0 ? "disabled" : ""}>Añadir canción</button>
+      <select name="playlistId" aria-label="Lista seleccionada" ${playlists.length === 0 ? "disabled" : ""}>
+        <option value="">Selecciona una lista</option>
+        ${playlists.map((playlist) => `<option value="${playlist.id}" ${playlist.id === selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}</option>`).join("")}
+      </select>
+      <button type="submit" ${playlists.length === 0 ? "disabled" : ""}>Añadir canción a la lista</button>
     </form>
     <form id="create-form" class="card">
       <strong>Crear una lista nueva</strong>
       <label>Nombre<input name="name" required autofocus></label>
       <label>Descripción<input name="description"></label>
       <label>Grupo (opcional)<input name="group"></label>
-      <button type="submit">Crear y añadir</button>
+      <button type="submit">Crear lista y añadir canción</button>
     </form>`;
 }
 

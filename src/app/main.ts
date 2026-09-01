@@ -425,6 +425,13 @@ async function bootstrap() {
       return;
     }
 
+    if (target.dataset.action === "close-collection-rename") {
+      state.collectionRenameId = null;
+      state.collectionRenameName = "";
+      render();
+      return;
+    }
+
   }, true);
 
   root.addEventListener("click", async (event) => {
@@ -538,19 +545,17 @@ async function bootstrap() {
     if (target.dataset.action === "rename-collection") {
       const collectionId = Number(target.dataset.id);
       const collection = state.collections.find((c) => c.id === collectionId);
-      const currentName = collection?.name || "";
-      const newName = window.prompt("Nuevo nombre de la colección", currentName)?.trim();
-      if (!newName || newName === currentName) {
+      if (!collection) {
         return;
       }
-      try {
-        await renameCollection(collectionId, newName);
-        await refreshData();
-        state.error = null;
-      } catch (error) {
-        state.error = error instanceof Error ? error.message : String(error);
-      }
+      state.collectionRenameId = collectionId;
+      state.collectionRenameName = collection.name;
       render();
+      setTimeout(() => {
+        const input = root.querySelector<HTMLInputElement>("#collection-rename-name");
+        input?.focus();
+        input?.select();
+      }, 0);
       return;
     }
 
@@ -1097,6 +1102,32 @@ async function bootstrap() {
   root.addEventListener("submit", async (event) => {
     const form = event.target as HTMLFormElement | null;
     if (!form) return;
+    if (form.id === "rename-collection-form") {
+      event.preventDefault();
+      const collectionId = state.collectionRenameId;
+      if (!collectionId) return;
+      const data = new FormData(form);
+      const newName = String(data.get("name") ?? "").trim();
+      if (!newName) return;
+      if (newName === state.collectionRenameName) {
+        state.collectionRenameId = null;
+        state.collectionRenameName = "";
+        render();
+        return;
+      }
+      try {
+        await renameCollection(collectionId, newName);
+        state.collectionRenameId = null;
+        state.collectionRenameName = "";
+        state.error = null;
+        await refreshData();
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+        render();
+      }
+      return;
+    }
+
     if (form.id === "create-playlist-form") {
       event.preventDefault();
       const data = new FormData(form);

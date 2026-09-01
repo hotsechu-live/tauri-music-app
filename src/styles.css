@@ -822,6 +822,12 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   margin: 0;
 }
 
+.modal.modal-compact {
+  width: min(100%, 480px);
+  min-height: 0;
+  resize: none;
+}
+
 .modal-form {
   display: grid;
   gap: 1rem;

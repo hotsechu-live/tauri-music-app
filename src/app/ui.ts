@@ -372,6 +372,22 @@ export function renderApp(state: AppState, root: HTMLElement) {
         ` : ""}
       </section>
 
+      <div class="modal-backdrop ${state.collectionRenameId !== null ? "" : "hidden"}" data-action="close-collection-rename">
+        <div class="modal modal-compact" role="dialog" aria-modal="true" aria-labelledby="rename-collection-title" onclick="event.stopPropagation()">
+          <form id="rename-collection-form" class="modal-form">
+            <div class="modal-title-bar">
+              <h2 id="rename-collection-title">Renombrar colección</h2>
+            </div>
+            <label for="collection-rename-name">Nuevo nombre</label>
+            <input id="collection-rename-name" name="name" value="${escapeHtml(state.collectionRenameName)}" required />
+            <div class="modal-actions">
+              <button type="button" class="secondary" data-action="close-collection-rename">Cancelar</button>
+              <button type="submit">Guardar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <div class="modal-backdrop ${state.playlistEditorOpen ? "" : "hidden"}" data-action="close-playlist-editor">
         <div class="modal${state.playlistEditorMaximized ? " maximized" : ""}" role="dialog" aria-modal="true" aria-labelledby="edit-playlist-title" onclick="event.stopPropagation()">
           <form id="edit-playlist-form" class="modal-form">
