@@ -13,4 +13,14 @@ button { border: 0; color: white; background: #2563eb; cursor: pointer; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 0.75rem; }
 .dialog-actions button { width: auto; min-width: 7rem; }
 button.secondary { color: #374151; background: #e5e7eb; }
+button {
+  color: #111827;
+  background: white;
+  border: 1px solid #d1d5db;
+  font: inherit;
+}
+button:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
 .error { color: #b91c1c; }

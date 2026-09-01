@@ -2,11 +2,12 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
 import { playlistPdfBytes, playlistPdfFilename } from "./playlist-pdf.js";
+import { playlistOdfBytes, playlistOdfFilename } from "./playlist-odf.js";
 
 async function bootstrap() {
   const root = document.querySelector("#app") as HTMLElement | null;
@@ -617,6 +618,29 @@ async function bootstrap() {
         const contents = playlistPdfBytes(playlist, state.playlistSongs);
         await writePdfFile(finalPath, contents);
         state.status = `PDF guardado en ${finalPath}`;
+        state.error = null;
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : String(error);
+        state.status = "";
+      }
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "export-playlist-odf") {
+      const playlist = state.playlists.find((entry) => entry.id === state.selectedPlaylistId);
+      if (!playlist) return;
+      try {
+        const filePath = await save({
+          title: "Guardar lista para LibreOffice",
+          defaultPath: playlistOdfFilename(playlist.name),
+          filters: [{ name: "Documento OpenDocument", extensions: ["odt"] }],
+        });
+        if (!filePath) return;
+        const finalPath = filePath.toLowerCase().endsWith(".odt") ? filePath : `${filePath}.odt`;
+        const contents = playlistOdfBytes(playlist, state.playlistSongs);
+        await writeOdfFile(finalPath, contents);
+        state.status = `Documento ODF guardado en ${finalPath}`;
         state.error = null;
       } catch (error) {
         state.error = error instanceof Error ? error.message : String(error);
