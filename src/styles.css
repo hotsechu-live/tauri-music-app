@@ -491,7 +491,7 @@ button {
 .playlist-toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   padding-bottom: 1rem;
   border-bottom: 1px solid #e5e7eb;
@@ -513,7 +513,7 @@ button {
 
 .playlist-create-form {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: auto repeat(3, minmax(0, 1fr));
   align-items: center;
   gap: 0.5rem;
 }
@@ -638,6 +638,10 @@ button {
   }
 
   .playlist-create-form input[name="description"] {
+    grid-column: 2;
+  }
+
+  .playlist-create-form input[name="group"] {
     grid-column: 2;
   }
 

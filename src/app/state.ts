@@ -19,6 +19,7 @@ export type Playlist = {
   id: number;
   name: string;
   description: string | null;
+  group: string | null;
   description_extended: string | null;
   purpose: string | null;
   tags: string | null;
@@ -58,6 +59,7 @@ export type AppState = {
   status: string;
   error: string | null;
   selectedPlaylistId: number | null;
+  playlistGroupFilter: string | null;
   playlistSongs: Song[];
   selectedSongId: number | null;
   playbackQueue: Song[];
@@ -70,6 +72,7 @@ export type AppState = {
   playlistEditorId: number | null;
   playlistEditorName: string;
   playlistEditorDescription: string | null;
+  playlistEditorGroup: string | null;
   playlistEditorDescriptionExtended: string | null;
   playlistEditorPurpose: string | null;
   playlistEditorTags: string | null;
@@ -100,6 +103,7 @@ export const createInitialState = (): AppState => ({
   status: "idle",
   error: null,
   selectedPlaylistId: null,
+  playlistGroupFilter: null,
   playlistSongs: [],
   selectedSongId: null,
   playbackQueue: [],
@@ -109,6 +113,7 @@ export const createInitialState = (): AppState => ({
   playlistEditorId: null,
   playlistEditorName: "",
   playlistEditorDescription: null,
+  playlistEditorGroup: null,
   playlistEditorDescriptionExtended: null,
   playlistEditorPurpose: null,
   playlistEditorTags: null,

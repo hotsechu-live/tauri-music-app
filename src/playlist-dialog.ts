@@ -34,6 +34,7 @@ function render(message = "", isError = false) {
       <strong>Crear una lista nueva</strong>
       <label>Nombre<input name="name" required autofocus></label>
       <label>Descripción<input name="description"></label>
+      <label>Grupo (opcional)<input name="group"></label>
       <button type="submit">Crear y añadir</button>
     </form>`;
 }
@@ -65,8 +66,9 @@ root?.addEventListener("submit", async (event) => {
     if (form.id === "create-form") {
       const name = String(data.get("name") ?? "").trim();
       const description = String(data.get("description") ?? "").trim() || null;
+      const group = String(data.get("group") ?? "").trim() || null;
       if (!name) return;
-      selectedPlaylistId = await createPlaylist(name, description);
+      selectedPlaylistId = await createPlaylist(name, description, group);
     } else {
       selectedPlaylistId = Number(data.get("playlistId")) || null;
     }

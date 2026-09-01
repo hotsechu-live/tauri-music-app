@@ -51,14 +51,15 @@ export async function deleteCollection(collectionId: number) {
   return invoke<string>("delete_collection", { collectionId });
 }
 
-export async function createPlaylist(name: string, description: string | null = null) {
-  return invoke<number>("create_playlist", { name, description });
+export async function createPlaylist(name: string, description: string | null = null, group: string | null = null) {
+  return invoke<number>("create_playlist", { name, description, group });
 }
 
 export async function updatePlaylist(
   playlistId: number,
   name: string,
   description: string | null = null,
+  group: string | null = null,
   descriptionExtended: string | null = null,
   purpose: string | null = null,
   tags: string | null = null,
@@ -68,6 +69,7 @@ export async function updatePlaylist(
     playlistId,
     name,
     description,
+    group,
     descriptionExtended,
     purpose,
     tags,

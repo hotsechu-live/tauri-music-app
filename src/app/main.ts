@@ -29,6 +29,13 @@ async function bootstrap() {
       state.songs = songs;
       state.collections = collections;
       state.playlists = playlists;
+      if (state.playlistGroupFilter !== null) {
+        const selectedPlaylist = playlists.find((playlist) => playlist.id === state.selectedPlaylistId);
+        if (selectedPlaylist && (selectedPlaylist.group?.trim() ?? "") !== state.playlistGroupFilter) {
+          state.selectedPlaylistId = null;
+          state.playlistSongs = [];
+        }
+      }
       state.customMetadataDefinitions = customMetadataDefinitions;
       if (
         state.searchField.startsWith("custom:")
@@ -61,6 +68,7 @@ async function bootstrap() {
     return (
       String(data.get("name") ?? "") !== state.playlistEditorName ||
       String(data.get("description") ?? "") !== (state.playlistEditorDescription ?? "") ||
+      String(data.get("group") ?? "") !== (state.playlistEditorGroup ?? "") ||
       String(data.get("descriptionExtended") ?? "") !== (state.playlistEditorDescriptionExtended ?? "") ||
       String(data.get("purpose") ?? "") !== (state.playlistEditorPurpose ?? "") ||
       String(data.get("tags") ?? "") !== (state.playlistEditorTags ?? "") ||
@@ -88,6 +96,7 @@ async function bootstrap() {
     state.playlistEditorId = null;
     state.playlistEditorName = "";
     state.playlistEditorDescription = null;
+    state.playlistEditorGroup = null;
     state.playlistEditorDescriptionExtended = null;
     state.playlistEditorPurpose = null;
     state.playlistEditorTags = null;
@@ -582,6 +591,7 @@ async function bootstrap() {
       state.playlistEditorId = playlistId;
       state.playlistEditorName = playlist.name;
       state.playlistEditorDescription = playlist.description;
+      state.playlistEditorGroup = playlist.group;
       state.playlistEditorDescriptionExtended = playlist.description_extended;
       state.playlistEditorPurpose = playlist.purpose;
       state.playlistEditorTags = playlist.tags;
@@ -1039,6 +1049,25 @@ async function bootstrap() {
       state.error = null;
       render();
     }
+
+    if (target.id === "playlist-group-selector") {
+      state.playlistGroupFilter = target.value === ""
+        ? null
+        : target.value === "ungrouped"
+          ? ""
+          : target.value.slice("group:".length);
+      const selectedPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId);
+      if (
+        selectedPlaylist
+        && state.playlistGroupFilter !== null
+        && (selectedPlaylist.group?.trim() ?? "") !== state.playlistGroupFilter
+      ) {
+        state.selectedPlaylistId = null;
+        state.playlistSongs = [];
+      }
+      state.error = null;
+      render();
+    }
   });
 
   root.addEventListener("submit", async (event) => {
@@ -1049,9 +1078,10 @@ async function bootstrap() {
       const data = new FormData(form);
       const name = String(data.get("name") ?? "").trim();
       const description = String(data.get("description") ?? "").trim() || null;
+      const group = String(data.get("group") ?? "").trim() || null;
       if (!name) return;
       try {
-        state.selectedPlaylistId = await createPlaylist(name, description);
+        state.selectedPlaylistId = await createPlaylist(name, description, group);
         state.playlistSongs = [];
         state.status = `Lista creada: ${name}`;
         state.error = null;
@@ -1088,13 +1118,14 @@ async function bootstrap() {
       const data = new FormData(form);
       const name = String(data.get("name") ?? "").trim();
       const description = String(data.get("description") ?? "").trim() || null;
+      const group = String(data.get("group") ?? "").trim() || null;
       const descriptionExtended = String(data.get("descriptionExtended") ?? "").trim() || null;
       const purpose = String(data.get("purpose") ?? "").trim() || null;
       const tags = String(data.get("tags") ?? "").trim() || null;
       const comment = String(data.get("comment") ?? "").trim() || null;
       if (!name) return;
       try {
-        await updatePlaylist(playlistId, name, description, descriptionExtended, purpose, tags, comment);
+        await updatePlaylist(playlistId, name, description, group, descriptionExtended, purpose, tags, comment);
         state.error = null;
         await refreshData();
       } catch (error) {

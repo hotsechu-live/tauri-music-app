@@ -89,6 +89,15 @@ export function renderApp(state: AppState, root: HTMLElement) {
     ? [currentSong.title.trim(), currentSong.artist.trim()].filter(Boolean).join(" - ")
     : "";
   const currentPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId) ?? null;
+  const playlistGroups = Array.from(new Set(
+    state.playlists
+      .map((playlist) => playlist.group?.trim() ?? "")
+      .filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right, "es"));
+  const filteredPlaylists = state.playlists.filter((playlist) => {
+    if (state.playlistGroupFilter === null) return true;
+    return (playlist.group?.trim() ?? "") === state.playlistGroupFilter;
+  });
   const playbackDuration = Math.max(0, state.currentPlaybackDuration);
   const playbackTime = Math.min(Math.max(0, state.currentPlaybackTime), playbackDuration || Infinity);
   const playbackProgress = playbackDuration > 0 ? (playbackTime / playbackDuration) * 100 : 0;
@@ -102,7 +111,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
       <nav class="panel app-menu" aria-label="Navegación principal">
         <button class="menu-item ${state.activeView === "songs" ? "active" : ""}" data-action="navigate" data-view="songs">Canciones</button>
         <button class="menu-item ${state.activeView === "collections" ? "active" : ""}" data-action="navigate" data-view="collections">Colecciones</button>
-        <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas</button>
+        <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Listas de reproducción</button>
         <button class="menu-item ${state.activeView === "metadata" ? "active" : ""}" data-action="navigate" data-view="metadata">Metadatos</button>
         <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
       </nav>
@@ -282,18 +291,28 @@ export function renderApp(state: AppState, root: HTMLElement) {
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
         <section class="playlist-create-card">
-          <h2>Crear nueva lista</h2>
+          <h2>Crear nueva lista de reproducción</h2>
           <form id="create-playlist-form" class="playlist-create-form">
-            <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva lista" title="Crear nueva lista">+</button>
+            <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva lista de reproducción" title="Crear nueva lista de reproducción">+</button>
             <input id="playlist-name" name="name" required placeholder="Nombre de la lista" aria-label="Nombre de la lista" />
             <input name="description" placeholder="Descripción" aria-label="Descripción de la lista" />
+            <input name="group" placeholder="Grupo (opcional)" aria-label="Grupo de la lista" />
           </form>
         </section>
         <div class="playlist-toolbar">
           <div class="playlist-selector">
-            <select id="playlist-selector" aria-label="Lista seleccionada" ${state.playlists.length === 0 ? "disabled" : ""}>
-              <option value="">Selecciona una lista</option>
-              ${state.playlists.map((playlist) => `
+            <select id="playlist-group-selector" aria-label="Grupo de listas">
+              <option value="" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
+              <option value="ungrouped" ${state.playlistGroupFilter === "" ? "selected" : ""}>Sin grupo</option>
+              ${playlistGroups.map((group) => `
+                <option value="group:${escapeHtml(group)}" ${group === state.playlistGroupFilter ? "selected" : ""}>${escapeHtml(group)}</option>
+              `).join("")}
+            </select>
+          </div>
+          <div class="playlist-selector">
+            <select id="playlist-selector" aria-label="Lista seleccionada" ${filteredPlaylists.length === 0 ? "disabled" : ""}>
+              <option value="">Selecciona una lista de reproducción</option>
+              ${filteredPlaylists.map((playlist) => `
                 <option value="${playlist.id}" ${playlist.id === state.selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}${playlist.duration ? ` (${escapeHtml(playlist.duration)})` : ""}</option>
               `).join("")}
             </select>
@@ -318,6 +337,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                   <span class="playlist-duration">${escapeHtml(currentPlaylist.duration || "00:00:00")}</span>
                 </div>
                 <p class="playlist-description">${escapeHtml(currentPlaylist.description || "Sin descripción")}</p>
+                ${currentPlaylist.group ? `<p class="playlist-description">Grupo: ${escapeHtml(currentPlaylist.group)}</p>` : ""}
               </div>
             </div>
             ${state.playlistSongs.length === 0 ? "<p class=\"info-message\">Esta lista todavía no contiene canciones.</p>" : ""}
@@ -364,6 +384,10 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <label>
               Descripción corta
               <input name="description" value="${escapeHtml(state.playlistEditorDescription)}" />
+            </label>
+            <label>
+              Grupo
+              <input name="group" value="${escapeHtml(state.playlistEditorGroup)}" />
             </label>
             <label>
               Descripción extendida

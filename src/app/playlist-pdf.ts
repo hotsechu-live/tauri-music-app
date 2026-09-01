@@ -125,6 +125,7 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
 
   sectionTitle("Información");
   if (playlist.created_at.trim()) paragraph("Creada", formatDate(playlist.created_at));
+  if (playlist.group?.trim()) paragraph("Grupo", playlist.group.trim());
   if (playlist.purpose?.trim()) paragraph("Finalidad", playlist.purpose.trim());
   if (playlist.tags?.trim()) paragraph("Etiquetas", playlist.tags.trim());
   if (playlist.description_extended?.trim()) {

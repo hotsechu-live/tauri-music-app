@@ -226,6 +226,7 @@ struct PlaylistRecord {
     id: i64,
     name: String,
     description: Option<String>,
+    group: Option<String>,
     description_extended: Option<String>,
     purpose: Option<String>,
     tags: Option<String>,
@@ -331,6 +332,7 @@ fn init_schema(conn: &Connection) -> Result<()> {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             description TEXT,
+            "group" TEXT,
             description_extended TEXT,
             purpose TEXT,
             tags TEXT,
@@ -407,6 +409,9 @@ fn ensure_playlist_columns(conn: &Connection) -> Result<()> {
 
     if !columns.contains(&"description_extended".to_string()) {
         conn.execute("ALTER TABLE playlists ADD COLUMN description_extended TEXT", [])?;
+    }
+    if !columns.contains(&"group".to_string()) {
+        conn.execute("ALTER TABLE playlists ADD COLUMN \"group\" TEXT", [])?;
     }
     if !columns.contains(&"purpose".to_string()) {
         conn.execute("ALTER TABLE playlists ADD COLUMN purpose TEXT", [])?;
@@ -849,13 +854,13 @@ fn delete_collection(collection_id: i64) -> Result<String, String> {
 }
 
 #[command]
-fn create_playlist(name: String, description: Option<String>) -> Result<i64, String> {
+fn create_playlist(name: String, description: Option<String>, group: Option<String>) -> Result<i64, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     init_schema(&conn).map_err(|e| e.to_string())?;
     let created_at = Utc::now().to_rfc3339();
     conn.execute(
-        "INSERT INTO playlists (name, description, created_at) VALUES (?1, ?2, ?3)",
-        params![name, description, created_at],
+        "INSERT INTO playlists (name, description, \"group\", created_at) VALUES (?1, ?2, ?3, ?4)",
+        params![name, description, group, created_at],
     )
     .map_err(|e| e.to_string())?;
     Ok(conn.last_insert_rowid())
@@ -866,6 +871,7 @@ fn update_playlist(
     playlist_id: i64,
     name: String,
     description: Option<String>,
+    group: Option<String>,
     description_extended: Option<String>,
     purpose: Option<String>,
     tags: Option<String>,
@@ -873,8 +879,8 @@ fn update_playlist(
 ) -> Result<String, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE playlists SET name = ?1, description = ?2, description_extended = ?3, purpose = ?4, tags = ?5, comment = ?6 WHERE id = ?7",
-        params![name, description, description_extended, purpose, tags, comment, playlist_id],
+        "UPDATE playlists SET name = ?1, description = ?2, \"group\" = ?3, description_extended = ?4, purpose = ?5, tags = ?6, comment = ?7 WHERE id = ?8",
+        params![name, description, group, description_extended, purpose, tags, comment, playlist_id],
     )
     .map_err(|e| e.to_string())?;
     Ok("ok".to_string())
@@ -1069,6 +1075,7 @@ fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
             "SELECT p.id,
                     p.name,
                     p.description,
+                    p.\"group\",
                     p.description_extended,
                     p.purpose,
                     p.tags,
@@ -1092,12 +1099,13 @@ fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 description: row.get(2)?,
-                description_extended: row.get(3)?,
-                purpose: row.get(4)?,
-                tags: row.get(5)?,
-                comment: row.get(6)?,
-                created_at: row.get(7)?,
-                duration: row.get(8)?,
+                group: row.get(3)?,
+                description_extended: row.get(4)?,
+                purpose: row.get(5)?,
+                tags: row.get(6)?,
+                comment: row.get(7)?,
+                created_at: row.get(8)?,
+                duration: row.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?;
