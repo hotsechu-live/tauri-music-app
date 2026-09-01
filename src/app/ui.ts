@@ -294,16 +294,14 @@ export function renderApp(state: AppState, root: HTMLElement) {
           <h2>Crear nueva lista de reproducción</h2>
           <form id="create-playlist-form" class="playlist-create-form">
             <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva lista de reproducción" title="Crear nueva lista de reproducción">+</button>
-            <button type="submit" class="icon-button playlist-create-button">Crear nueva lista</button>
             <input id="playlist-name" name="name" required placeholder="Nombre de la lista" aria-label="Nombre de la lista" />
             <input name="description" placeholder="Descripción" aria-label="Descripción de la lista" />
-            <input name="group" placeholder="Grupo (opcional)" aria-label="Grupo de la lista" />
           </form>
         </section>
         <div class="playlist-toolbar">
           <div class="playlist-selector">
             <select id="playlist-group-selector" aria-label="Grupo de listas">
-              <option value="" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
+              <option value="all" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
               <option value="ungrouped" ${state.playlistGroupFilter === "" ? "selected" : ""}>Sin grupo</option>
               ${playlistGroups.map((group) => `
                 <option value="group:${escapeHtml(group)}" ${group === state.playlistGroupFilter ? "selected" : ""}>${escapeHtml(group)}</option>

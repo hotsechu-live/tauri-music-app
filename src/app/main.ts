@@ -1075,7 +1075,7 @@ async function bootstrap() {
     }
 
     if (target.id === "playlist-group-selector") {
-      state.playlistGroupFilter = target.value === ""
+      state.playlistGroupFilter = target.value === "all"
         ? null
         : target.value === "ungrouped"
           ? ""
@@ -1102,10 +1102,9 @@ async function bootstrap() {
       const data = new FormData(form);
       const name = String(data.get("name") ?? "").trim();
       const description = String(data.get("description") ?? "").trim() || null;
-      const group = String(data.get("group") ?? "").trim() || null;
       if (!name) return;
       try {
-        state.selectedPlaylistId = await createPlaylist(name, description, group);
+        state.selectedPlaylistId = await createPlaylist(name, description);
         state.playlistSongs = [];
         state.status = `Lista creada: ${name}`;
         state.error = null;

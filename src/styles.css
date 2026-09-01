@@ -501,6 +501,9 @@ button {
 }
 
 .playlist-create-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 1rem;
   padding: 1rem;
   border-radius: 12px;
@@ -508,11 +511,19 @@ button {
   border: 1px solid #e5e7eb;
 }
 
+.playlist-create-card h2 {
+  margin: 0;
+  font-size: 1.1rem;
+  white-space: nowrap;
+}
+
 .playlist-create-form {
   display: grid;
-  grid-template-columns: auto repeat(3, minmax(0, 1fr));
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .playlist-create-button {
@@ -625,12 +636,21 @@ button {
 }
 
 @media (max-width: 760px) {
-  .playlist-toolbar {
-    width: 100%;
+  .playlist-create-card {
+    align-items: stretch;
+    flex-direction: column;
   }
 
-  .playlist-create-form input[name="group"] {
+  .playlist-create-form {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .playlist-create-form input[name="description"] {
     grid-column: 2;
+  }
+
+  .playlist-toolbar {
+    width: 100%;
   }
 
   .playlist-songs li {
