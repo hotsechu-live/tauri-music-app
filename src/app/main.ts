@@ -458,7 +458,7 @@ async function bootstrap() {
             url: "about.html",
             title: "Acerca de Tauri Music App",
             width: 440,
-            height: 300,
+            height: 400,
             resizable: false,
             center: true,
           });

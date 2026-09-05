@@ -46,7 +46,20 @@ button:hover {
   background: #f3f4f6;
   border-color: #9ca3af;
 }
-.actions { display: flex; justify-content: flex-end; margin-top: .85rem; }
+.actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: .85rem; }
+.metadata-save-button {
+  padding: .6rem .8rem;
+  border-radius: 8px;
+  color: #14532d;
+  background: #bbf7d0;
+  border-color: #86efac;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.metadata-save-button:hover {
+  background: #86efac;
+  border-color: #4ade80;
+}
 .custom-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: .5rem; }
 .manager-create-form { grid-template-columns: 1fr auto; }
 .manager-list li { grid-template-columns: 1fr auto auto; }

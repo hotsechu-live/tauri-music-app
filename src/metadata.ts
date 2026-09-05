@@ -1,3 +1,4 @@
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import {
   deleteSongCustomMetadata,
   listSongCustomMetadata,
@@ -45,11 +46,10 @@ function render(message = "", isError = false) {
   }
 
   root.innerHTML = `
-    <h1>Editar metadatos</h1>
     <p class="subtitle">${escapeHtml(song.title)} · ${escapeHtml(song.collection_name)}</p>
     <p class="message ${isError ? "error" : ""}">${escapeHtml(message)}</p>
     <form id="song-fields-form" class="card">
-      <h2>Metadatos de la canción</h2>
+      <h2>Editar metadatos de la canción</h2>
       <div class="fields">
         <label>Título<input name="title" required value="${escapeHtml(song.title)}"></label>
         <label>Artista<input name="artist" value="${escapeHtml(song.artist)}"></label>
@@ -57,7 +57,10 @@ function render(message = "", isError = false) {
         <label>Género<input name="genre" value="${escapeHtml(song.genre)}"></label>
         <label>Año<input name="year" value="${escapeHtml(song.year)}"></label>
       </div>
-      <div class="actions"><button type="submit">Guardar cambios</button></div>
+      <div class="actions">
+        <button type="button" data-action="cancel">Cancelar</button>
+        <button type="submit" class="metadata-save-button">Guardar cambios</button>
+      </div>
     </form>
     <section class="card">
       <h2>Datos técnicos (solo lectura)</h2>
@@ -126,6 +129,18 @@ root?.addEventListener("submit", async (event) => {
 
 root?.addEventListener("click", async (event) => {
   const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-action]");
+  if (button?.dataset.action === "cancel") {
+    try {
+      await getCurrentWebviewWindow().close();
+    } catch (error) {
+      const message = root?.querySelector<HTMLElement>(".message");
+      if (message) {
+        message.textContent = error instanceof Error ? error.message : String(error);
+        message.classList.add("error");
+      }
+    }
+    return;
+  }
   const row = button?.closest<HTMLLIElement>("li[data-key]");
   const key = row?.dataset.key;
   if (!button || !row || !key) return;
