@@ -125,6 +125,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         </div>
         <div class="player-controls">
           <button class="player-button" data-action="playback-prev" aria-label="Canción anterior" title="Canción anterior">&#10072;&#9664;</button>
+          <button class="player-button" data-action="playback-until-mark" aria-label="Reproducir hasta la marca" title="Reproducir hasta la marca">&#9654;&#9873;</button>
           <button class="player-button" data-action="playback-toggle" aria-label="${state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}" title="${state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}">${state.playbackStatus === "playing" ? "&#10074;&#10074;" : "&#9654;"}</button>
           <button class="player-button" data-action="playback-next" aria-label="Canción siguiente" title="Canción siguiente">&#9654;&#10072;</button>
         </div>
@@ -271,7 +272,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 (song) => `
                   <tr class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}" ${song.id === state.currentPlaybackSongId ? 'aria-current="true"' : ""}>
                     <td class="song-actions">
-                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}" title="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}">${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "&#10074;&#10074;" : "&#9654;"}</button>
+                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="Seleccionar canción en el reproductor" title="Seleccionar canción en el reproductor">&#9654;</button>
                       <button class="icon-button" data-action="edit-song-metadata" data-song-id="${song.id}" aria-label="Editar metadatos" title="Editar metadatos">&#9998;</button>
                       <button class="icon-button" data-action="add-song-to-playlist" data-song-id="${song.id}" aria-label="Añadir a una lista" title="Añadir a una lista">+</button>
                     </td>
@@ -349,7 +350,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                   (song, index) => `
                     <li class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}">
                       <div class="playlist-song-main">
-                        <button type="button" class="icon-button" data-action="play-playlist-song" data-song-id="${song.id}" aria-label="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}" title="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar" : "Reproducir"}">${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "&#10074;&#10074;" : "&#9654;"}</button>
+                        <button type="button" class="icon-button" data-action="play-playlist-song" data-song-id="${song.id}" aria-label="Seleccionar canción en el reproductor" title="Seleccionar canción en el reproductor">&#9654;</button>
                         <span class="playlist-song-order">${index + 1}</span>
                       </div>
                       <div class="playlist-song-meta">

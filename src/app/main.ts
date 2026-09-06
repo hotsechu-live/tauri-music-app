@@ -20,6 +20,34 @@ async function bootstrap() {
   let playbackStartedAt = 0;
   let playbackStartOffset = 0;
   let playbackVolumeBeforeMute = 1;
+  let playbackEndMark: number | null = null;
+  let updatingMarkedPlayback = false;
+
+  const playbackFade = () => playbackEndMark === null
+    ? 1
+    : Math.min(1, Math.max(0, (playbackEndMark - state.currentPlaybackTime) / Math.min(3, playbackEndMark)));
+
+  const cancelMarkedPlayback = async () => {
+    playbackEndMark = null;
+    await setNativeAudioVolume(state.playbackVolume);
+  };
+
+  const finishMarkedPlayback = async () => {
+    const mark = playbackEndMark;
+    if (mark === null) return;
+    // Clear the limit before awaiting so an ended event cannot advance the queue.
+    playbackEndMark = null;
+    state.playbackStatus = "paused";
+    playbackStartedAt = 0;
+    state.currentPlaybackTime = 0;
+    playbackStartOffset = 0;
+    await setNativeAudioVolume(0);
+    await pauseNativeAudio();
+    await seekNativeAudio(0);
+    await setNativeAudioVolume(state.playbackVolume);
+    state.status = "Reproducción hasta la marca finalizada";
+    render();
+  };
 
   const refreshData = async () => {
     try {
@@ -128,7 +156,10 @@ async function bootstrap() {
     }
 
     const nextTime = Math.min(Math.max(0, seconds), state.currentPlaybackDuration);
-    await seekNativeAudio(nextTime);
+    await cancelMarkedPlayback();
+    if (state.playbackStatus !== "stopped") {
+      await seekNativeAudio(nextTime);
+    }
     state.currentPlaybackTime = nextTime;
     playbackStartOffset = nextTime;
     playbackStartedAt = state.playbackStatus === "playing" ? performance.now() : 0;
@@ -141,6 +172,31 @@ async function bootstrap() {
       updatePlaybackProgress(state, root);
     }
   }, 500);
+
+  window.setInterval(() => {
+    const mark = playbackEndMark;
+    if (mark === null || state.playbackStatus !== "playing" || updatingMarkedPlayback) return;
+    updatingMarkedPlayback = true;
+    void (async () => {
+      syncPlaybackTime();
+      if (state.currentPlaybackTime >= mark) {
+        await finishMarkedPlayback();
+      } else {
+        await setNativeAudioVolume(state.playbackVolume * playbackFade());
+      }
+    })().catch(async (error) => {
+      playbackEndMark = null;
+      state.playbackStatus = "paused";
+      playbackStartedAt = 0;
+      playbackStartOffset = state.currentPlaybackTime;
+      await pauseNativeAudio().catch(() => {});
+      await setNativeAudioVolume(state.playbackVolume).catch(() => {});
+      state.error = `No se pudo reproducir hasta la marca: ${String(error)}`;
+      render();
+    }).finally(() => {
+      updatingMarkedPlayback = false;
+    });
+  }, 50);
 
   const stopAudioPlayback = () => {
     if (audioElement) {
@@ -159,7 +215,7 @@ async function bootstrap() {
     if (audioElement) {
       audioElement.volume = nextVolume;
     }
-    await setNativeAudioVolume(nextVolume);
+    await setNativeAudioVolume(nextVolume * playbackFade());
   };
 
   const buildAudioSource = (filePath: string) => {
@@ -208,19 +264,20 @@ async function bootstrap() {
     state.playbackIndex = 0;
   };
 
-  const playSongByIndex = async (index: number) => {
+  const playSongByIndex = async (index: number, endMark: number | null = null) => {
     const song = state.playbackQueue[index];
     if (!song) {
       return;
     }
 
+    await cancelMarkedPlayback();
     state.playbackIndex = index;
     state.currentPlaybackSongId = song.id;
     state.currentPlaybackTime = 0;
     state.currentPlaybackDuration = song.duration_seconds ?? 0;
     state.playbackStatus = "playing";
     playbackStartOffset = 0;
-    playbackStartedAt = performance.now();
+    playbackStartedAt = 0;
     state.status = `Reproduciendo ${song.title}`;
     render();
 
@@ -228,6 +285,8 @@ async function bootstrap() {
     // HTMLAudioElement usado anteriormente por el WebView.
     try {
       await playNativeAudio(song.file_path);
+      playbackEndMark = endMark;
+      playbackStartedAt = performance.now();
     } catch (error) {
       state.error = `No se pudo iniciar la reproducción: ${String(error)}`;
       state.playbackStatus = "stopped";
@@ -327,32 +386,26 @@ async function bootstrap() {
     await playSongByIndex(state.playbackIndex);
   };
 
-  const toggleSongPlayback = async (song: Song, sourceSongs: Song[], playlistId: number | null = null) => {
-    if (state.currentPlaybackSongId === song.id && state.playbackStatus === "playing") {
-      syncPlaybackTime();
-      await pauseNativeAudio();
-      state.playbackStatus = "paused";
-      playbackStartOffset = state.currentPlaybackTime;
-      playbackStartedAt = 0;
-      state.status = "Pausado";
-      render();
-      return;
+  const selectSongForPlayback = async (song: Song, sourceSongs: Song[], playlistId: number | null = null) => {
+    state.playbackStatus = "stopped";
+    playbackStartedAt = 0;
+    stopAudioPlayback();
+    try {
+      await stopNativeAudio();
+      await cancelMarkedPlayback();
+      state.playbackQueue = [...sourceSongs];
+      state.playbackIndex = state.playbackQueue.findIndex((entry) => entry.id === song.id);
+      state.playbackPlaylistId = playlistId;
+      state.currentPlaybackSongId = song.id;
+      state.currentPlaybackTime = 0;
+      state.currentPlaybackDuration = song.duration_seconds ?? 0;
+      playbackStartOffset = 0;
+      state.error = null;
+      state.status = `Canción seleccionada: ${song.title}`;
+    } catch (error) {
+      state.error = `No se pudo seleccionar la canción: ${String(error)}`;
     }
-
-    if (state.currentPlaybackSongId === song.id && state.playbackStatus === "paused") {
-      await resumeNativeAudio();
-      state.playbackStatus = "playing";
-      playbackStartOffset = state.currentPlaybackTime;
-      playbackStartedAt = performance.now();
-      state.status = "Reproduciendo";
-      render();
-      return;
-    }
-
-    state.playbackQueue = sourceSongs;
-    state.playbackIndex = state.playbackQueue.findIndex((entry) => entry.id === song.id);
-    state.playbackPlaylistId = playlistId;
-    await playSongByIndex(state.playbackIndex);
+    render();
   };
 
   const finishPlayback = () => {
@@ -365,6 +418,11 @@ async function bootstrap() {
   };
 
   const handlePlaybackEnded = async () => {
+    if (state.playbackStatus !== "playing") return;
+    if (playbackEndMark !== null) {
+      await finishMarkedPlayback();
+      return;
+    }
     if (state.playbackMode === "manual") {
       finishPlayback();
       return;
@@ -383,6 +441,7 @@ async function bootstrap() {
   });
 
   await listen<string>("native-audio-error", (event) => {
+    void cancelMarkedPlayback().catch(() => {});
     state.error = `No se pudo continuar la reproducción: ${event.payload}`;
     state.playbackStatus = "stopped";
     playbackStartedAt = 0;
@@ -750,7 +809,7 @@ async function bootstrap() {
       const songId = Number(target.dataset.songId);
       const song = state.songs.find((entry) => entry.id === songId);
       if (song) {
-        await toggleSongPlayback(song, getVisibleSongs());
+        await selectSongForPlayback(song, getVisibleSongs());
       }
       return;
     }
@@ -759,7 +818,7 @@ async function bootstrap() {
       const songId = Number(target.dataset.songId);
       const song = state.playlistSongs.find((entry) => entry.id === songId);
       if (song) {
-        await toggleSongPlayback(song, state.playlistSongs, state.selectedPlaylistId);
+        await selectSongForPlayback(song, state.playlistSongs, state.selectedPlaylistId);
       }
       return;
     }
@@ -885,6 +944,14 @@ async function bootstrap() {
       return;
     }
 
+    if (target.dataset.action === "playback-until-mark") {
+      const mark = state.currentPlaybackTime;
+      if (mark > 0 && state.currentPlaybackSongId !== null) {
+        await playSongByIndex(state.playbackIndex, mark);
+      }
+      return;
+    }
+
     if (target.dataset.action === "playback-toggle") {
       if (state.playbackStatus === "playing") {
         syncPlaybackTime();
@@ -910,6 +977,7 @@ async function bootstrap() {
     if (target.dataset.action === "playback-stop") {
       stopAudioPlayback();
       await stopNativeAudio();
+      await cancelMarkedPlayback();
       state.playbackStatus = "stopped";
       state.currentPlaybackTime = 0;
       playbackStartOffset = 0;
