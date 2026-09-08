@@ -484,6 +484,14 @@ async function bootstrap() {
       return;
     }
 
+    if (target.dataset.action === "close-metadata-rename") {
+      state.metadataRenameKey = null;
+      state.metadataRenameName = "";
+      state.metadataRenameError = null;
+      render();
+      return;
+    }
+
     if (target.dataset.action === "close-collection-rename") {
       state.collectionRenameId = null;
       state.collectionRenameName = "";
@@ -772,20 +780,15 @@ async function bootstrap() {
     }
 
     if (target.dataset.action === "rename-metadata-definition") {
-      const oldKey = target.dataset.key ?? "";
-      const row = target.closest<HTMLElement>("[data-metadata-key]");
-      const newKey = row?.querySelector<HTMLInputElement>("input")?.value.trim() ?? "";
-      if (!oldKey || !newKey) return;
-      const confirmed = await confirm(`¿Cambiar "${oldKey}" por "${newKey}" en todas las canciones?`, { title: "Confirmar modificación", kind: "warning" });
-      if (!confirmed) return;
-      try {
-        await renameCustomMetadataDefinition(oldKey, newKey);
-        state.status = "Metadato modificado en todas las canciones.";
-        await refreshData();
-      } catch (error) {
-        state.error = error instanceof Error ? error.message : String(error);
-      }
+      const key = target.dataset.key;
+      if (!key) return;
+      state.metadataRenameKey = key;
+      state.metadataRenameName = key;
+      state.metadataRenameError = null;
       render();
+      const input = root.querySelector<HTMLInputElement>("#metadata-rename-name");
+      input?.focus();
+      input?.select();
       return;
     }
 
@@ -893,6 +896,20 @@ async function bootstrap() {
         return;
       }
       try {
+        const song = state.playlistSongs.find((item) => item.id === songId);
+        const songName = song?.title ? `"${song.title}"` : "esta canción";
+        const confirmed = await confirm(
+          `¿Quieres quitar ${songName} de la lista de reproducción? La canción seguirá en la colección.`,
+          {
+            title: "Confirmar eliminación",
+            kind: "warning",
+            okLabel: "Quitar",
+            cancelLabel: "Cancelar",
+          },
+        );
+        if (!confirmed) {
+          return;
+        }
         await removeSongFromPlaylist(playlistId, songId);
         await refreshData();
       } catch (error) {
@@ -1170,6 +1187,34 @@ async function bootstrap() {
   root.addEventListener("submit", async (event) => {
     const form = event.target as HTMLFormElement | null;
     if (!form) return;
+    if (form.id === "rename-metadata-definition-form") {
+      event.preventDefault();
+      const oldKey = state.metadataRenameKey;
+      if (oldKey === null) return;
+      const newKey = String(new FormData(form).get("name") ?? "").trim();
+      state.metadataRenameName = newKey;
+      if (!newKey) {
+        state.metadataRenameError = "El nombre del metadato no puede estar vacío.";
+        render();
+        root.querySelector<HTMLInputElement>("#metadata-rename-name")?.focus();
+        return;
+      }
+      try {
+        if (newKey !== oldKey) {
+          await renameCustomMetadataDefinition(oldKey, newKey);
+          state.status = "Metadato renombrado en todas las canciones.";
+        }
+        state.metadataRenameKey = null;
+        state.metadataRenameName = "";
+        state.metadataRenameError = null;
+        await refreshData();
+      } catch (error) {
+        state.metadataRenameError = error instanceof Error ? error.message : String(error);
+        render();
+      }
+      return;
+    }
+
     if (form.id === "rename-collection-form") {
       event.preventDefault();
       const collectionId = state.collectionRenameId;

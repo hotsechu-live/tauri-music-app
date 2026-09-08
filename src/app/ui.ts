@@ -195,10 +195,10 @@ export function renderApp(state: AppState, root: HTMLElement) {
             ${state.customMetadataDefinitions.map((key) => `
               <li data-metadata-key="${escapeHtml(key)}">
                 <div class="metadata-definition-actions">
-                  <button type="button" class="icon-button" data-action="rename-metadata-definition" data-key="${escapeHtml(key)}" aria-label="Modificar metadato ${escapeHtml(key)}" title="Modificar metadato">&#9998;</button>
+                  <button type="button" class="icon-button" data-action="rename-metadata-definition" data-key="${escapeHtml(key)}" aria-label="Renombrar metadato ${escapeHtml(key)}" title="Renombrar">&#9998;</button>
                   <button type="button" class="icon-button danger" data-action="delete-metadata-definition" data-key="${escapeHtml(key)}" aria-label="Eliminar metadato ${escapeHtml(key)}" title="Eliminar metadato">&#128465;</button>
                 </div>
-                <input value="${escapeHtml(key)}" aria-label="Nombre de ${escapeHtml(key)}" />
+                <input value="${escapeHtml(key)}" aria-label="Nombre de ${escapeHtml(key)}" readonly />
               </li>
             `).join("")}
           </ul>` : "<p class=\"info-message\">No hay metadatos personalizados.</p>"}
@@ -237,7 +237,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 <input id="all-collections-filter" type="checkbox" ${state.selectedCollectionIds.length === 0 ? "checked" : ""} />
                 Todas las colecciones
               </label>
-              ${state.collections
+              ${[...state.collections]
+                .sort((left, right) => left.name.localeCompare(right.name, "es", { sensitivity: "base" }))
                 .map(
                   (collection) => `
                     <label>
@@ -374,6 +375,24 @@ export function renderApp(state: AppState, root: HTMLElement) {
           </div>
         ` : ""}
       </section>
+
+      <div class="modal-backdrop ${state.metadataRenameKey !== null ? "" : "hidden"}" data-action="close-metadata-rename">
+        <div class="modal modal-compact" role="dialog" aria-modal="true" aria-labelledby="rename-metadata-title" aria-describedby="rename-metadata-help" onclick="event.stopPropagation()">
+          <form id="rename-metadata-definition-form" class="modal-form">
+            <div class="modal-title-bar">
+              <h2 id="rename-metadata-title">Renombrar metadato</h2>
+            </div>
+            <p id="rename-metadata-help">El cambio de nombre se aplicará a todas las canciones que tengan este metadato. Sus valores se conservarán.</p>
+            <label for="metadata-rename-name">Nuevo nombre</label>
+            <input id="metadata-rename-name" name="name" value="${escapeHtml(state.metadataRenameName)}" required />
+            ${state.metadataRenameError ? `<p class="error" role="alert">${escapeHtml(state.metadataRenameError)}</p>` : ""}
+            <div class="modal-actions">
+              <button type="button" class="secondary" data-action="close-metadata-rename">Cancelar</button>
+              <button type="submit">Renombrar</button>
+            </div>
+          </form>
+        </div>
+      </div>
 
       <div class="modal-backdrop ${state.collectionRenameId !== null ? "" : "hidden"}" data-action="close-collection-rename">
         <div class="modal modal-compact" role="dialog" aria-modal="true" aria-labelledby="rename-collection-title" onclick="event.stopPropagation()">

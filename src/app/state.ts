@@ -50,6 +50,9 @@ export type AppState = {
   playlists: Playlist[];
   collections: Collection[];
   customMetadataDefinitions: string[];
+  metadataRenameKey: string | null;
+  metadataRenameName: string;
+  metadataRenameError: string | null;
   selectedCollectionIds: number[];
   collectionFilterOpen: boolean;
   collectionRenameId: number | null;
@@ -96,6 +99,9 @@ export const createInitialState = (): AppState => ({
   playlists: [],
   collections: [],
   customMetadataDefinitions: [],
+  metadataRenameKey: null,
+  metadataRenameName: "",
+  metadataRenameError: null,
   selectedCollectionIds: [],
   collectionFilterOpen: false,
   collectionRenameId: null,

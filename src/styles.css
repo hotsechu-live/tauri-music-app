@@ -793,6 +793,10 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   border-color: #9ca3af;
 }
 
+#confirm-import-btn,
+#create-metadata-definition-form .metadata-create-button,
+#rename-metadata-definition-form button[type="submit"],
+#rename-collection-form button[type="submit"],
 #edit-playlist-form .playlist-save-button {
   color: #14532d;
   background: #bbf7d0;
@@ -800,9 +804,20 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   font-weight: 700;
 }
 
+#confirm-import-btn:hover,
+#create-metadata-definition-form .metadata-create-button:hover,
+#rename-metadata-definition-form button[type="submit"]:hover,
+#rename-collection-form button[type="submit"]:hover,
 #edit-playlist-form .playlist-save-button:hover {
   background: #86efac;
   border-color: #4ade80;
+}
+
+#confirm-import-btn,
+#create-metadata-definition-form .metadata-create-button,
+#rename-metadata-definition-form button[type="submit"],
+#rename-collection-form button[type="submit"] {
+  line-height: 1.5;
 }
 
 #play-filtered-btn,

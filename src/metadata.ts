@@ -76,7 +76,7 @@ function render(message = "", isError = false) {
       <form id="custom-metadata-form" class="custom-form">
         <input name="key" required placeholder="Nombre del metadato" aria-label="Nombre del metadato">
         <input name="value" placeholder="Valor" aria-label="Valor del metadato">
-        <button type="submit">Añadir</button>
+        <button type="submit" class="metadata-save-button">Añadir</button>
       </form>
       ${customMetadata.length ? `
         <ul class="metadata-list">
