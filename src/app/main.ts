@@ -386,6 +386,27 @@ async function bootstrap() {
     await playSongByIndex(state.playbackIndex);
   };
 
+  const togglePlayback = async () => {
+    if (state.playbackStatus === "playing") {
+      syncPlaybackTime();
+      await pauseNativeAudio();
+      state.playbackStatus = "paused";
+      playbackStartOffset = state.currentPlaybackTime;
+      playbackStartedAt = 0;
+      state.status = `Pausado`;
+    } else if (state.playbackStatus === "paused") {
+      await resumeNativeAudio();
+      state.playbackStatus = "playing";
+      playbackStartOffset = state.currentPlaybackTime;
+      playbackStartedAt = performance.now();
+      state.status = `Reproduciendo`;
+    } else {
+      await playCurrentSong();
+      return;
+    }
+    render();
+  };
+
   const selectSongForPlayback = async (song: Song, sourceSongs: Song[], playlistId: number | null = null) => {
     state.playbackStatus = "stopped";
     playbackStartedAt = 0;
@@ -812,7 +833,11 @@ async function bootstrap() {
       const songId = Number(target.dataset.songId);
       const song = state.songs.find((entry) => entry.id === songId);
       if (song) {
-        await selectSongForPlayback(song, getVisibleSongs());
+        if (state.currentPlaybackSongId !== song.id) {
+          await selectSongForPlayback(song, getVisibleSongs());
+          if (state.error) return;
+        }
+        await togglePlayback();
       }
       return;
     }
@@ -970,24 +995,7 @@ async function bootstrap() {
     }
 
     if (target.dataset.action === "playback-toggle") {
-      if (state.playbackStatus === "playing") {
-        syncPlaybackTime();
-        await pauseNativeAudio();
-        state.playbackStatus = "paused";
-        playbackStartOffset = state.currentPlaybackTime;
-        playbackStartedAt = 0;
-        state.status = `Pausado`;
-      } else if (state.playbackStatus === "paused") {
-        await resumeNativeAudio();
-        state.playbackStatus = "playing";
-        playbackStartOffset = state.currentPlaybackTime;
-        playbackStartedAt = performance.now();
-        state.status = `Reproduciendo`;
-      } else {
-        await playCurrentSong();
-        return;
-      }
-      render();
+      await togglePlayback();
       return;
     }
 

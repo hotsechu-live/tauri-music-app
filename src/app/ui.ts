@@ -273,7 +273,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 (song) => `
                   <tr class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}" ${song.id === state.currentPlaybackSongId ? 'aria-current="true"' : ""}>
                     <td class="song-actions">
-                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="Seleccionar canción en el reproductor" title="Seleccionar canción en el reproductor">&#9654;</button>
+                      <button class="icon-button" data-action="play-song" data-song-id="${song.id}" aria-label="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar canción" : "Reproducir canción"}" title="${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "Pausar canción" : "Reproducir canción"}">${song.id === state.currentPlaybackSongId && state.playbackStatus === "playing" ? "&#10074;&#10074;" : "&#9654;"}</button>
                       <button class="icon-button" data-action="edit-song-metadata" data-song-id="${song.id}" aria-label="Editar metadatos" title="Editar metadatos">&#9998;</button>
                       <button class="icon-button" data-action="add-song-to-playlist" data-song-id="${song.id}" aria-label="Añadir a una lista" title="Añadir a una lista">+</button>
                     </td>
@@ -351,7 +351,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                   (song, index) => `
                     <li class="${song.id === state.currentPlaybackSongId ? "current-song-row" : ""}">
                       <div class="playlist-song-main">
-                        <button type="button" class="icon-button" data-action="play-playlist-song" data-song-id="${song.id}" aria-label="Seleccionar canción en el reproductor" title="Seleccionar canción en el reproductor">&#9654;</button>
+                        <input type="checkbox" data-action="play-playlist-song" data-song-id="${song.id}" ${song.id === state.currentPlaybackSongId ? "checked" : ""} aria-label="Seleccionar canción en el reproductor" title="Seleccionar canción en el reproductor" />
                         <span class="playlist-song-order">${index + 1}</span>
                       </div>
                       <div class="playlist-song-meta">
