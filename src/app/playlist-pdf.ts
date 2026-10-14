@@ -139,27 +139,23 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
   }
 
   songs.forEach((song, index) => {
-    const metadata = song.custom_metadata.filter((item) => item.value.trim());
-    const detailParts = [song.artist.trim(), song.album.trim(), song.genre.trim(), song.year.trim()].filter(Boolean);
+    const detailParts = [song.artist.trim()].filter(Boolean);
     const technicalParts = [
       song.format.trim() ? song.format.trim().toUpperCase() : null,
       formatDuration(song.duration_seconds),
       formatSize(song.file_size),
     ].filter((value): value is string => Boolean(value));
-    const metadataLines = metadata.map((item) => `${item.key}: ${item.value}`);
     doc.setFontSize(8.5);
     const titleRows = doc.splitTextToSize(text(song.title, "Sin título"), CONTENT_WIDTH - 28) as string[];
     const detailRows = detailParts.length
       ? doc.splitTextToSize(detailParts.join(" · "), CONTENT_WIDTH - 28) as string[]
       : [];
-    const metadataRows = metadataLines.flatMap((line) => doc.splitTextToSize(line, CONTENT_WIDTH - 28) as string[]);
     const consignaRows = song.consigna.trim()
       ? doc.splitTextToSize(song.consigna.trim(), CONTENT_WIDTH - 28) as string[]
       : [];
     const cardHeight = Math.max(
       20,
       9 + titleRows.length * 4 + detailRows.length * 3.8
-        + (metadataRows.length ? metadataRows.length * 3.5 + 2 : 0)
         + (consignaRows.length ? consignaRows.length * 4 + 5 : 0),
     );
     ensureSpace(cardHeight + 3);
@@ -192,11 +188,6 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
       doc.setTextColor(96, 108, 122);
       doc.text(technicalParts.join("  |  "), contentX, cardY);
       cardY += 4;
-    }
-    if (metadataRows.length) {
-      doc.setTextColor(67, 56, 202);
-      doc.text(metadataRows, contentX, cardY);
-      cardY += metadataRows.length * 3.5 + 1;
     }
     if (consignaRows.length) {
       doc.setDrawColor(191, 201, 214);

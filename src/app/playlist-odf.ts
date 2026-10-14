@@ -62,20 +62,16 @@ export function playlistOdfBytes(playlist: Playlist, songs: Song[]) {
   const songContent = songs.length === 0
     ? `<text:p>Esta lista no contiene canciones.</text:p>`
     : songs.map((song) => {
-      const details = [song.artist.trim(), song.album.trim(), song.genre.trim(), song.year.trim()].filter(Boolean);
+      const details = [song.artist.trim()].filter(Boolean);
       const technical = [
         song.format.trim() ? song.format.trim().toUpperCase() : null,
         formatDuration(song.duration_seconds),
         formatSize(song.file_size),
       ].filter((item): item is string => Boolean(item));
-      const custom = song.custom_metadata
-        .filter((item) => item.value.trim())
-        .map((item) => paragraph(item.key, item.value));
       return `<text:list-item>
         <text:p text:style-name="SongTitle">${xml(value(song.title, "Sin título"))}</text:p>
         ${details.length ? `<text:p text:style-name="SongDetail">${xml(details.join(" · "))}</text:p>` : ""}
         ${technical.length ? `<text:p text:style-name="Technical">${xml(technical.join(" | "))}</text:p>` : ""}
-        ${custom.join("")}
         ${song.consigna.trim() ? paragraph("Consigna", song.consigna.trim()) : ""}
       </text:list-item>`;
     }).join("");
