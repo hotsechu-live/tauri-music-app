@@ -430,6 +430,77 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <p class="info-message">${escapeHtml(state.toolsState.importExportStatus)}</p>
           ` : ""}
         </div>
+
+        <div class="tools-section">
+          <h3>Backup y Restauración</h3>
+          <p class="tools-description">
+            Crea un backup completo de todas las colecciones, canciones y sesiones en un archivo ZIP. 
+            El restore pregunta dónde copiar los archivos de música, permitiendo restaurar en cualquier sistema operativo.
+          </p>
+          
+          <div class="tools-actions">
+            <button id="backup-btn" data-action="create-backup" class="tools-button">
+              💾 Crear Backup
+            </button>
+            <button id="restore-btn" data-action="open-restore" class="tools-button">
+              🔄 Restaurar Backup
+            </button>
+          </div>
+          
+          ${state.toolsState.backupInProgress ? `
+            <div class="progress-indicator">
+              <p>Creando backup... <span class="spinner">⏳</span></p>
+            </div>
+          ` : ''}
+
+          ${state.toolsState.backupResult ? `
+            <div class="backup-result">
+              <h4>Backup creado</h4>
+              <p><strong>Archivo:</strong> ${escapeHtml(state.toolsState.backupResult)}</p>
+            </div>
+          ` : ''}
+
+          ${state.toolsState.backupError ? `
+            <p class="error">${escapeHtml(state.toolsState.backupError)}</p>
+          ` : ''}
+
+          ${state.toolsState.restoreInProgress ? `
+            <div class="progress-indicator">
+              <p>Restaurando... <span class="spinner">⏳</span></p>
+            </div>
+          ` : ''}
+
+          ${state.toolsState.restoreResult ? `
+            <div class="restore-result">
+              <h4>Resultado de la restauración</h4>
+              <p><strong>Base de datos:</strong> ${
+                state.toolsState.restoreResult.databaseRestored ? "✓ Restaurada" : "✗ No restaurada"
+              }</p>
+              <p><strong>Colecciones:</strong></p>
+              <ul>
+                ${state.toolsState.restoreResult.collectionsRestored.map(c => `
+                  <li>${escapeHtml(c.collectionName)}: ${c.filesRestored} archivos restaurados, ${c.filesSkipped} omitidos</li>
+                `).join('')}
+              </ul>
+              ${state.toolsState.restoreResult.warnings.length > 0 ? `
+                <p class="warning"><strong>Advertencias:</strong></p>
+                <ul class="warnings-list">
+                  ${state.toolsState.restoreResult.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}
+                </ul>
+              ` : ''}
+              ${state.toolsState.restoreResult.errors.length > 0 ? `
+                <p class="error"><strong>Errores:</strong></p>
+                <ul class="errors-list">
+                  ${state.toolsState.restoreResult.errors.map(e => `<li>${escapeHtml(e)}</li>`).join('')}
+                </ul>
+              ` : ''}
+            </div>
+          ` : ''}
+
+          ${state.toolsState.restoreError ? `
+            <p class="error">${escapeHtml(state.toolsState.restoreError)}</p>
+          ` : ''}
+        </div>
       </section>
 
       <div class="modal-backdrop ${state.metadataRenameKey !== null ? "" : "hidden"}" data-action="close-metadata-rename">

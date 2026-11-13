@@ -1,5 +1,19 @@
 import type { ImportResult } from "./playlist-export.js";
 
+// Tipos para backup/restore
+export type RestoreResult = {
+  databaseRestored: boolean;
+  collectionsRestored: RestoreCollectionResult[];
+  errors: string[];
+  warnings: string[];
+};
+
+export type RestoreCollectionResult = {
+  collectionName: string;
+  filesRestored: number;
+  filesSkipped: number;
+};
+
 export type Song = {
   id: number;
   collection_id: number;
@@ -52,6 +66,15 @@ export type ToolsState = {
   importExportError: string | null;
   importResult: ImportResult | null;
   exportInProgress: boolean;
+  // Campos para backup/restore
+  backupInProgress: boolean;
+  backupStatus: string | null;
+  backupError: string | null;
+  backupResult: string | null;
+  restoreInProgress: boolean;
+  restoreStatus: string | null;
+  restoreError: string | null;
+  restoreResult: RestoreResult | null;
 };
 
 export type AppState = {
@@ -158,5 +181,13 @@ export const createInitialState = (): AppState => ({
     importExportError: null,
     importResult: null,
     exportInProgress: false,
+    backupInProgress: false,
+    backupStatus: null,
+    backupError: null,
+    backupResult: null,
+    restoreInProgress: false,
+    restoreStatus: null,
+    restoreError: null,
+    restoreResult: null,
   },
 });

@@ -2,7 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile, createBackup, selectRestoreBackup, selectRestoreTargetDirectory, restoreBackup } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
@@ -642,6 +642,91 @@ async function bootstrap() {
         state.toolsState.importExportError = `Error al importar: ${error instanceof Error ? error.message : String(error)}`;
         state.toolsState.importExportStatus = null;
         state.toolsState.importResult = null;
+        render();
+      }
+      return;
+    }
+
+    // Acciones de backup
+    if (target.dataset.action === "create-backup") {
+      try {
+        state.toolsState.backupInProgress = true;
+        state.toolsState.backupStatus = "Creando backup...";
+        state.toolsState.backupError = null;
+        state.toolsState.backupResult = null;
+        render();
+
+        const backupPath = await createBackup();
+
+        if (backupPath) {
+          state.toolsState.backupResult = backupPath;
+          state.toolsState.backupStatus = "Backup creado correctamente";
+        } else {
+          state.toolsState.backupStatus = "Backup cancelado";
+        }
+        state.toolsState.backupInProgress = false;
+        render();
+      } catch (error) {
+        state.toolsState.backupError = `Error al crear backup: ${error instanceof Error ? error.message : String(error)}`;
+        state.toolsState.backupInProgress = false;
+        state.toolsState.backupStatus = null;
+        render();
+      }
+      return;
+    }
+
+    if (target.dataset.action === "open-restore") {
+      try {
+        state.toolsState.restoreInProgress = true;
+        state.toolsState.restoreStatus = "Seleccionando archivo de backup...";
+        state.toolsState.restoreError = null;
+        state.toolsState.restoreResult = null;
+        render();
+
+        // Paso 1: Seleccionar archivo de backup
+        const backupPath = await selectRestoreBackup();
+        if (!backupPath) {
+          state.toolsState.restoreStatus = "Restauracion cancelada";
+          state.toolsState.restoreInProgress = false;
+          render();
+          return;
+        }
+
+        // Paso 2: Preguntar donde copiar la musica
+        state.toolsState.restoreStatus = "Seleccionando carpeta de destino...";
+        render();
+
+        const targetDir = await selectRestoreTargetDirectory();
+        if (!targetDir) {
+          state.toolsState.restoreStatus = "Restauracion cancelada";
+          state.toolsState.restoreInProgress = false;
+          render();
+          return;
+        }
+
+        // Paso 3: Ejecutar restauracion
+        state.toolsState.restoreStatus = "Restaurando datos...";
+        render();
+
+        const result = await restoreBackup(backupPath, targetDir);
+
+        state.toolsState.restoreResult = result;
+        state.toolsState.restoreInProgress = false;
+
+        if (result.databaseRestored || result.collectionsRestored.length > 0) {
+          state.toolsState.restoreStatus = "Restauracion completada";
+          // Recargar todos los datos de la aplicacion
+          await refreshData();
+        } else {
+          state.toolsState.restoreStatus = "No se pudieron restaurar datos";
+        }
+
+        render();
+      } catch (error) {
+        state.toolsState.restoreError = `Error al restaurar: ${error instanceof Error ? error.message : String(error)}`;
+        state.toolsState.restoreInProgress = false;
+        state.toolsState.restoreStatus = null;
+        state.toolsState.restoreResult = null;
         render();
       }
       return;

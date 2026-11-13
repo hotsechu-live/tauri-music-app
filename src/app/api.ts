@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import { playlistExportBytes, playlistExportFilename, parsePlaylistExport, type ImportResult } from "./playlist-export.js";
+import type { RestoreResult } from "./state.js";
 
 export async function initDatabase() {
   return invoke("init_database");
@@ -237,4 +238,87 @@ export async function importPlaylistFile(targetGroup?: string): Promise<ImportRe
  */
 export async function playlistExists(name: string): Promise<boolean> {
   return invoke<boolean>("playlist_exists", { name });
+}
+
+/**
+ * Crea un backup completo de la aplicacion en formato ZIP
+ * Incluye la base de datos y todos los archivos de musica
+ */
+export async function createBackup(): Promise<string | null> {
+  const filePath = await save({
+    title: "Guardar backup como ZIP",
+    defaultPath: `music-app-backup-${new Date().toISOString().split('T')[0]}.zip`,
+    filters: [{ name: "Archivo ZIP", extensions: ["zip"] }],
+  });
+
+  if (!filePath) {
+    return null;
+  }
+
+  try {
+    const result = await invoke<string>("create_backup", { backupPath: filePath });
+    return result;
+  } catch (error) {
+    throw new Error(`Error al crear backup: ${String(error)}`);
+  }
+}
+
+/**
+ * Selecciona un archivo de backup para restaurar
+ */
+export async function selectRestoreBackup(): Promise<string | null> {
+  const filePath = await open({
+    title: "Seleccionar archivo de backup",
+    filters: [{ name: "Archivo ZIP", extensions: ["zip"] }],
+    multiple: false,
+  });
+
+  if (!filePath || Array.isArray(filePath)) {
+    return null;
+  }
+
+  return filePath as string;
+}
+
+/**
+ * Selecciona el directorio destino para restaurar los archivos de musica
+ */
+export async function selectRestoreTargetDirectory(): Promise<string | null> {
+  const dirPath = await open({
+    title: "Seleccionar carpeta para restaurar la musica",
+    directory: true,
+    multiple: false,
+  });
+
+  if (!dirPath || Array.isArray(dirPath)) {
+    return null;
+  }
+
+  return dirPath as string;
+}
+
+/**
+ * Restaura un backup completo
+ * @param backupPath - Ruta al archivo ZIP de backup
+ * @param targetMusicDir - Ruta al directorio donde copiar los archivos de musica
+ * @returns Resultado de la restauracion
+ */
+export async function restoreBackup(
+  backupPath: string,
+  targetMusicDir: string
+): Promise<RestoreResult> {
+  try {
+    const result = await invoke<RestoreResult>("restore_backup", {
+      backupPath,
+      targetMusicDir,
+    });
+    return result;
+  } catch (error) {
+    return {
+      databaseRestored: false,
+      collectionsRestored: [],
+      errors: [`Error al restaurar: ${String(error)}`],
+      warnings: [],
+    };
+  }
 }
