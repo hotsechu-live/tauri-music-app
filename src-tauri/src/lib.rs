@@ -548,6 +548,7 @@ struct PlaylistImportResult {
     total_songs: usize,
     matched_songs: usize,
     unmatched_songs: usize,
+    errors: Vec<String>,
     warnings: Vec<String>,
 }
 
@@ -795,6 +796,7 @@ fn import_playlist(
         total_songs,
         matched_songs,
         unmatched_songs: total_songs - matched_songs,
+        errors: Vec::new(),
         warnings,
     })
 }
