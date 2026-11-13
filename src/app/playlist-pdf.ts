@@ -144,6 +144,7 @@ export function playlistPdfBytes(playlist: Playlist, songs: Song[]) {
       song.format.trim() ? song.format.trim().toUpperCase() : null,
       formatDuration(song.duration_seconds),
       formatSize(song.file_size),
+      song.collection_name,
     ].filter((value): value is string => Boolean(value));
     doc.setFontSize(8.5);
     const titleRows = doc.splitTextToSize(text(song.title, "Sin título"), CONTENT_WIDTH - 28) as string[];

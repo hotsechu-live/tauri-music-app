@@ -67,6 +67,7 @@ export function playlistOdfBytes(playlist: Playlist, songs: Song[]) {
         song.format.trim() ? song.format.trim().toUpperCase() : null,
         formatDuration(song.duration_seconds),
         formatSize(song.file_size),
+        song.collection_name,
       ].filter((item): item is string => Boolean(item));
       return `<text:list-item>
         <text:p text:style-name="SongTitle">${xml(value(song.title, "Sin título"))}</text:p>

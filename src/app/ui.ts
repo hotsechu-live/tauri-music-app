@@ -356,7 +356,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                       </div>
                       <div class="playlist-song-meta">
                         <span class="song-title">${escapeHtml(song.title)}</span>
-                        <span class="song-details">${escapeHtml(song.artist)} · ${escapeHtml(song.album)} · <span class="playlist-song-duration" aria-label="Duración">${song.duration_seconds == null ? "—" : formatPlaybackTime(song.duration_seconds)}</span></span>
+                        <span class="song-details">${escapeHtml(song.artist)} · ${escapeHtml(song.album)} · <span class="playlist-song-duration" aria-label="Duración">${song.duration_seconds == null ? "—" : formatPlaybackTime(song.duration_seconds)}</span> · ${escapeHtml(song.collection_name)}</span>
                       </div>
                       <div class="inline-actions">
                         <button type="button" class="icon-button" data-action="playlist-move-up" data-index="${index}" aria-label="Mover arriba" title="Mover arriba">↑</button>
