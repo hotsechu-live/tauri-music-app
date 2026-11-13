@@ -8,7 +8,6 @@ import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
 import { playlistPdfBytes, playlistPdfFilename } from "./playlist-pdf.js";
 import { playlistOdfBytes, playlistOdfFilename } from "./playlist-odf.js";
-import type { ImportResult } from "./playlist-export.js";
 
 async function bootstrap() {
   const root = document.querySelector("#app") as HTMLElement | null;

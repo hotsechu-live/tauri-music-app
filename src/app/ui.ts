@@ -1,6 +1,5 @@
 import { createInitialState, type AppState } from "./state.js";
 import { filterSongs } from "./search.js";
-import type { ImportResult } from "./playlist-export.js";
 
 function escapeHtml(value: string | null | undefined) {
   return (value ?? "")
