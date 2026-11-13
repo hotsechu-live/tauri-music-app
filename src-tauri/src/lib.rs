@@ -1,5 +1,7 @@
 use std::{
+    collections::HashMap,
     fs,
+    io::Read,
     path::PathBuf,
     sync::{Mutex, OnceLock},
 };
@@ -8,7 +10,8 @@ use chrono::Utc;
 use lofty::{Accessor, AudioFile, Probe, TaggedFileExt};
 use regex::Regex;
 use rusqlite::{params, Connection, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use tauri::{command, AppHandle, Emitter, Manager};
 use walkdir::WalkDir;
 
@@ -499,6 +502,313 @@ fn set_native_audio_volume(
 ) -> Result<String, String> {
     player.set_volume(volume)?;
     Ok("Volumen actualizado".to_string())
+}
+
+// Estructuras para importación/exportación de playlists
+#[derive(Debug, Serialize, Deserialize)]
+struct ExportedPlaylist {
+    version: u32,
+    exported_at: Option<String>,
+    playlist: ExportedPlaylistData,
+    songs: Vec<ExportedSong>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ExportedPlaylistData {
+    name: String,
+    description: Option<String>,
+    group: Option<String>,
+    description_extended: Option<String>,
+    purpose: Option<String>,
+    tags: Option<String>,
+    comment: Option<String>,
+    created_at: String,
+    duration: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct ExportedSong {
+    title: String,
+    artist: String,
+    album: Option<String>,
+    genre: Option<String>,
+    year: Option<String>,
+    duration_seconds: Option<i64>,
+    format: Option<String>,
+    file_size: Option<i64>,
+    collection_name: String,
+    consigna: Option<String>,
+    file_hash_sha256: Option<String>,
+    custom_metadata: Option<HashMap<String, String>>,
+}
+
+#[derive(Debug, Serialize)]
+struct PlaylistImportResult {
+    playlist_id: Option<i64>,
+    total_songs: usize,
+    matched_songs: usize,
+    unmatched_songs: usize,
+    warnings: Vec<String>,
+}
+
+/// Calcula el hash SHA-256 de un archivo
+fn calculate_file_hash(file_path: &str) -> Result<String, String> {
+    let path = PathBuf::from(file_path);
+    if !path.exists() {
+        return Err(format!("El archivo no existe: {}", file_path));
+    }
+
+    let mut file = std::fs::File::open(&path)
+        .map_err(|e| format!("No se pudo abrir el archivo para calcular hash: {}", e))?;
+
+    let mut hasher = Sha256::new();
+    let mut buffer = [0; 8192];
+    loop {
+        let bytes_read = file.read(&mut buffer)
+            .map_err(|e| format!("Error al leer el archivo para hash: {}", e))?;
+        if bytes_read == 0 {
+            break;
+        }
+        hasher.update(&buffer[..bytes_read]);
+    }
+
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+/// Encuentra una canción en la base de datos que coincida con la canción exportada
+/// Devuelve el ID de la canción o None si no se encuentra coincidencia
+fn find_matching_song_id(conn: &Connection, exported_song: &ExportedSong) -> Result<Option<i64>, String> {
+    // Buscar canciones por nombre de colección, título, artista y duración
+    let query = 
+        "SELECT s.id FROM songs s JOIN collections c ON c.id = s.collection_id WHERE c.name = ?1 AND s.title = ?2";
+
+    let mut stmt = conn
+        .prepare(query)
+        .map_err(|e| format!("Error al preparar consulta de matching: {}", e))?;
+
+    let rows = stmt
+        .query_map(
+            params![
+                exported_song.collection_name.clone(),
+                exported_song.title.clone()
+            ],
+            |row| row.get::<_, i64>(0),
+        )
+        .map_err(|e| format!("Error al ejecutar consulta de matching: {}", e))?;
+
+    let mut candidate_ids: Vec<i64> = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| format!("Error al recolectar resultados: {}", e))?;
+
+    // Si hay exactamente una coincidencia, devolverla
+    if candidate_ids.len() == 1 {
+        return Ok(Some(candidate_ids[0]));
+    }
+
+    // Si hay múltiples coincidencias, intentar filtrar por artista y duración
+    if candidate_ids.len() > 1 {
+        let mut filtered_ids: Vec<i64> = Vec::new();
+        for &id in &candidate_ids {
+            let song_artist: String = conn
+                .query_row(
+                    "SELECT artist FROM songs WHERE id = ?1",
+                    params![id],
+                    |row| row.get(0),
+                )
+                .map_err(|e| format!("Error al obtener artista: {}", e))?;
+
+            let song_duration: Option<i64> = conn
+                .query_row(
+                    "SELECT duration_seconds FROM songs WHERE id = ?1",
+                    params![id],
+                    |row| row.get(0),
+                )
+                .map_err(|e| format!("Error al obtener duración: {}", e))?;
+
+            let artist_match = exported_song.artist == song_artist;
+            let duration_match = match (exported_song.duration_seconds, song_duration) {
+                (Some(exp_dur), Some(song_dur)) => {
+                    (exp_dur - song_dur).abs() <= 1 // Tolerancia de 1 segundo
+                }
+                _ => true, // Si no hay duración, considerarlo match
+            };
+
+            if artist_match && duration_match {
+                filtered_ids.push(id);
+            }
+        }
+
+        if filtered_ids.len() == 1 {
+            return Ok(Some(filtered_ids[0]));
+        }
+
+        // Si aún hay múltiples, devolver la primera
+        if !filtered_ids.is_empty() {
+            return Ok(Some(filtered_ids[0]));
+        }
+    }
+
+    // Si no hay coincidencias por nombre de colección y título, intentar solo por título
+    if candidate_ids.is_empty() {
+        let query = "SELECT s.id FROM songs s WHERE s.title = ?1";
+        let mut stmt = conn
+            .prepare(query)
+            .map_err(|e| format!("Error al preparar consulta por título: {}", e))?;
+
+        let rows = stmt
+            .query_map(params![exported_song.title.clone()], |row| row.get::<_, i64>(0))
+            .map_err(|e| format!("Error al ejecutar consulta por título: {}", e))?;
+
+        candidate_ids = rows
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Error al recolectar resultados por título: {}", e))?;
+
+        if candidate_ids.len() == 1 {
+            return Ok(Some(candidate_ids[0]));
+        }
+    }
+
+    Ok(None)
+}
+
+/// Importa una playlist desde datos JSON exportados
+#[command]
+fn import_playlist(
+    app_handle: AppHandle,
+    export_data: String,
+    target_group: Option<String>,
+) -> Result<PlaylistImportResult, String> {
+    let exported: ExportedPlaylist = serde_json::from_str(&export_data)
+        .map_err(|e| format!("Error al parsear JSON de exportación: {}", e))?;
+
+    // Validar versión
+    if exported.version != 1 {
+        return Err(format!("Versión de exportación no soportada: {}", exported.version));
+    }
+
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    init_schema(&conn).map_err(|e| e.to_string())?;
+
+    let playlist_data = exported.playlist;
+    let songs = exported.songs;
+    let total_songs = songs.len();
+
+    let mut matched_songs = 0;
+    let mut warnings = Vec::new();
+
+    // Crear la nueva playlist
+    let created_at = Utc::now().to_rfc3339();
+    let group = target_group.or(playlist_data.group);
+
+    conn.execute(
+        "INSERT INTO playlists (name, description, \"group\", description_extended, purpose, tags, comment, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![
+            playlist_data.name,
+            playlist_data.description,
+            group,
+            playlist_data.description_extended,
+            playlist_data.purpose,
+            playlist_data.tags,
+            playlist_data.comment,
+            created_at
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let playlist_id = conn.last_insert_rowid();
+
+    // Procesar cada canción
+    let mut song_mapping: Vec<(usize, i64, String)> = Vec::new(); // (índice, song_id, consigna)
+
+    for (index, exported_song) in songs.iter().enumerate() {
+        match find_matching_song_id(&conn, exported_song)? {
+            Some(song_id) => {
+                // Añadir la canción a la playlist
+                let position = (index as i64) + 1;
+                let consigna = exported_song.consigna.clone().unwrap_or_default();
+
+                conn.execute(
+                    "INSERT INTO playlist_songs (playlist_id, song_id, position, consigna) VALUES (?1, ?2, ?3, ?4)",
+                    params![playlist_id, song_id, position, consigna],
+                )
+                .map_err(|e| {
+                    warnings.push(format!(
+                        "Error al añadir canción '{}' a la playlist: {}",
+                        exported_song.title, e
+                    ));
+                    format!("Error al añadir canción: {}", e)
+                })?;
+
+                song_mapping.push((index, song_id, consigna));
+                matched_songs += 1;
+            }
+            None => {
+                warnings.push(format!(
+                    "No se encontró coincidencia para la canción '{}' (Colección: {})",
+                    exported_song.title, exported_song.collection_name
+                ));
+            }
+        }
+    }
+
+    // Autorizar acceso a los archivos de audio de la nueva playlist
+    allow_registered_collection_folders(&app_handle)
+        .map_err(|e| format!("No se pudo autorizar carpetas: {}", e))?;
+
+    Ok(PlaylistImportResult {
+        playlist_id: Some(playlist_id),
+        total_songs,
+        matched_songs,
+        unmatched_songs: total_songs - matched_songs,
+        warnings,
+    })
+}
+
+/// Exporta una playlist como archivo JSON
+/// Esta función se usa para guardar el archivo de exportación en disco
+#[command]
+fn export_playlist_file(file_path: String, contents: String) -> Result<String, String> {
+    let path = PathBuf::from(&file_path);
+
+    // Validar extensión
+    if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
+        return Err("El archivo de destino debe tener extensión .json".to_string());
+    }
+
+    fs::write(&path, contents)
+        .map_err(|error| format!("No se pudo guardar el archivo de exportación: {}", error))?;
+
+    Ok(path.to_string_lossy().into_owned())
+}
+
+/// Verifica si existe una playlist con el mismo nombre
+#[command]
+fn playlist_exists(name: String) -> Result<bool, String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM playlists WHERE name = ?1",
+            params![name],
+            |row| row.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+
+    Ok(count > 0)
+}
+
+/// Lee el contenido de un archivo de texto
+#[command]
+fn read_text_file(file_path: String) -> Result<String, String> {
+    let path = PathBuf::from(&file_path);
+    if !path.exists() {
+        return Err(format!("El archivo no existe: {}", file_path));
+    }
+
+    let contents = fs::read_to_string(&path)
+        .map_err(|error| format!("No se pudo leer el archivo: {}", error))?;
+
+    Ok(contents)
 }
 
 fn normalize_collection_folder_path(folder_path: &str) -> String {
@@ -1537,7 +1847,11 @@ pub fn run() {
             list_playlists,
             list_playlist_songs,
             write_pdf_file,
-            write_odf_file
+            write_odf_file,
+            import_playlist,
+            export_playlist_file,
+            playlist_exists,
+            read_text_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

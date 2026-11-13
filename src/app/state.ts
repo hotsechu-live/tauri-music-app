@@ -1,3 +1,5 @@
+import type { ImportResult } from "./playlist-export.js";
+
 export type Song = {
   id: number;
   collection_id: number;
@@ -42,7 +44,15 @@ export type CustomMetadata = {
 
 export type PlaybackMode = "manual" | "sequential" | "shuffle";
 export type PlaybackStatus = "stopped" | "playing" | "paused";
-export type AppView = "collections" | "songs" | "playlists" | "metadata";
+export type AppView = "collections" | "songs" | "playlists" | "metadata" | "tools";
+
+export type ToolsState = {
+  importExportOpen: boolean;
+  importExportStatus: string | null;
+  importExportError: string | null;
+  importResult: ImportResult | null;
+  exportInProgress: boolean;
+};
 
 export type AppState = {
   activeView: AppView;
@@ -91,6 +101,8 @@ export type AppState = {
   selectedSongMetadata: CustomMetadata[];
   metadataDraftKey: string;
   metadataDraftValue: string;
+  // Estado para herramientas (import/export)
+  toolsState: ToolsState;
 };
 
 export const createInitialState = (): AppState => ({
@@ -140,4 +152,11 @@ export const createInitialState = (): AppState => ({
   selectedSongMetadata: [],
   metadataDraftKey: "",
   metadataDraftValue: "",
+  toolsState: {
+    importExportOpen: false,
+    importExportStatus: null,
+    importExportError: null,
+    importResult: null,
+    exportInProgress: false,
+  },
 });

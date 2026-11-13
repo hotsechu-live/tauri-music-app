@@ -1,5 +1,6 @@
 import { createInitialState, type AppState } from "./state.js";
 import { filterSongs } from "./search.js";
+import type { ImportResult } from "./playlist-export.js";
 
 function escapeHtml(value: string | null | undefined) {
   return (value ?? "")
@@ -113,6 +114,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <button class="menu-item ${state.activeView === "collections" ? "active" : ""}" data-action="navigate" data-view="collections">Colecciones</button>
         <button class="menu-item ${state.activeView === "playlists" ? "active" : ""}" data-action="navigate" data-view="playlists">Sesiones</button>
         <button class="menu-item ${state.activeView === "metadata" ? "active" : ""}" data-action="navigate" data-view="metadata">Metadatos</button>
+        <button class="menu-item ${state.activeView === "tools" ? "active" : ""}" data-action="navigate" data-view="tools">Herramientas</button>
         <button class="menu-item menu-item-secondary" data-action="open-about">Acerca de</button>
       </nav>
 
@@ -374,6 +376,61 @@ export function renderApp(state: AppState, root: HTMLElement) {
             </ul>
           </div>
         ` : ""}
+      </section>
+
+      <section class="panel tools-panel ${state.activeView === "tools" ? "" : "hidden"}">
+        <h2>Herramientas</h2>
+        
+        <div class="tools-section">
+          <h3>Importar/Exportar Sesiones</h3>
+          <p class="tools-description">
+            Exporta sesiones en formato JSON para compartirlas con otros equipos. 
+            Las canciones se identificarán automáticamente en el nuevo equipo si tienen el mismo nombre y colección.
+          </p>
+          
+          <div class="selected-playlist-info">
+            <label>Sesión seleccionada:</label>
+            <span class="selected-playlist-name">${state.selectedPlaylistId ? escapeHtml(state.playlists.find(p => p.id === state.selectedPlaylistId)?.name || "") : "Ninguna"}</span>
+          </div>
+          
+          <div class="tools-actions">
+            <button id="export-playlist-btn" data-action="open-export-playlist" class="tools-button" ${!state.selectedPlaylistId ? "disabled" : ""}>
+              📥 Exportar sesión seleccionada
+            </button>
+            <button id="import-playlist-btn" data-action="open-import-playlist" class="tools-button">
+              📤 Importar sesión
+            </button>
+          </div>
+          
+          ${state.toolsState.importResult ? `
+            <div class="import-result">
+              <h4>Resultado de la importación</h4>
+              <p><strong>Sesión:</strong> ${escapeHtml(state.toolsState.importResult.playlistId ? `Creada (ID: ${state.toolsState.importResult.playlistId})` : "No se creó")}</p>
+              <p><strong>Canciones:</strong> ${state.toolsState.importResult.matchedSongs}/${state.toolsState.importResult.totalSongs} coincididas</p>
+              ${state.toolsState.importResult.unmatchedSongs > 0 ? `
+                <p class="warning"><strong>Advertencias:</strong> ${state.toolsState.importResult.unmatchedSongs} canciones no se encontraron en este equipo</p>
+              ` : ""}
+              ${state.toolsState.importResult.warnings.length > 0 ? `
+                <ul class="warnings-list">
+                  ${state.toolsState.importResult.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join("")}
+                </ul>
+              ` : ""}
+              ${state.toolsState.importResult.errors.length > 0 ? `
+                <ul class="errors-list">
+                  ${state.toolsState.importResult.errors.map(e => `<li>${escapeHtml(e)}</li>`).join("")}
+                </ul>
+              ` : ""}
+            </div>
+          ` : ""}
+          
+          ${state.toolsState.importExportError ? `
+            <p class="error">${escapeHtml(state.toolsState.importExportError)}</p>
+          ` : ""}
+          
+          ${state.toolsState.importExportStatus ? `
+            <p class="info-message">${escapeHtml(state.toolsState.importExportStatus)}</p>
+          ` : ""}
+        </div>
       </section>
 
       <div class="modal-backdrop ${state.metadataRenameKey !== null ? "" : "hidden"}" data-action="close-metadata-rename">

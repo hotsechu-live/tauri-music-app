@@ -992,3 +992,168 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   gap: 1rem;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+
+/* Estilos para el panel de Herramientas */
+.tools-panel {
+  padding: 1.5rem;
+}
+
+.tools-panel h2 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #111827;
+}
+
+.tools-section {
+  max-width: 600px;
+}
+
+.tools-section h3 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  color: #374151;
+}
+
+.tools-description {
+  color: #6b7280;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.selected-playlist-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: #eff6ff;
+  border-radius: 8px;
+  border: 1px solid #dbeafe;
+  margin-bottom: 1.5rem;
+  max-width: 100%;
+}
+
+.selected-playlist-info label {
+  font-weight: 600;
+  color: #1e40af;
+  white-space: nowrap;
+}
+
+.selected-playlist-name {
+  flex: 1;
+  font-weight: 500;
+  color: #1e3a8a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tools-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: #9ca3af;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.tools-button:disabled:hover {
+  border-color: #9ca3af;
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.tools-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+}
+
+.tools-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 2px solid #d1d5db;
+  background: white;
+  color: #111827;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.tools-button:hover {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.tools-button:active {
+  transform: translateY(1px);
+}
+
+.import-result {
+  padding: 1rem;
+  background: #f0fdf4;
+  border-radius: 8px;
+  border: 1px solid #86efac;
+  margin-top: 1rem;
+}
+
+.import-result h4 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  color: #16844a;
+  font-size: 1rem;
+}
+
+.import-result p {
+  margin: 0.25rem 0;
+  color: #1f2937;
+}
+
+.warning {
+  color: #b91c1c !important;
+  font-weight: 600;
+}
+
+.warnings-list,
+.errors-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0 0;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.warnings-list li {
+  color: #c2410c;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  background: #fef3c7;
+  border-radius: 4px;
+}
+
+.errors-list li {
+  color: #b91c1c;
+  font-size: 0.9rem;
+  padding: 0.25rem 0.5rem;
+  background: #fee2e2;
+  border-radius: 4px;
+}
+
+/* Responsive para herramientas */
+@media (max-width: 600px) {
+  .tools-actions {
+    flex-direction: column;
+  }
+  
+  .tools-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

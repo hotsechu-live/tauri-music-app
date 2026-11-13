@@ -1,4 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
+import { open, save } from "@tauri-apps/plugin-dialog";
+import { playlistExportBytes, playlistExportFilename, parsePlaylistExport, type ImportResult } from "./playlist-export.js";
 
 export async function initDatabase() {
   return invoke("init_database");
@@ -146,4 +148,93 @@ export async function updateSongMetadata(
   metadata: { title: string; artist: string; album: string; genre: string; year: string },
 ) {
   return invoke<string>("update_song_metadata", { songId, ...metadata });
+}
+
+/**
+ * Exporta una playlist a formato JSON portable
+ */
+export async function exportPlaylist(
+  playlist: any,
+  songs: any[],
+) {
+  const contents = playlistExportBytes(playlist, songs);
+  const filePath = await save({
+    title: "Guardar sesión como JSON",
+    defaultPath: playlistExportFilename(playlist.name),
+    filters: [{ name: "Archivo JSON", extensions: ["json"] }],
+  });
+  
+  if (!filePath) {
+    return null;
+  }
+  
+  const finalPath = filePath.toLowerCase().endsWith(".json") 
+    ? filePath 
+    : `${filePath}.json`;
+  
+  await invoke<string>("export_playlist_file", { filePath: finalPath, contents });
+  return finalPath;
+}
+
+/**
+ * Importa una playlist desde archivo JSON
+ */
+export async function importPlaylistFile(targetGroup?: string): Promise<ImportResult> {
+  const filePath = await open({
+    title: "Seleccionar archivo de sesión",
+    filters: [{ name: "Archivo JSON", extensions: ["json"] }],
+    multiple: false,
+  });
+  
+  if (!filePath || Array.isArray(filePath)) {
+    return {
+      playlistId: null,
+      totalSongs: 0,
+      matchedSongs: 0,
+      unmatchedSongs: 0,
+      errors: ["No se seleccionó ningún archivo"],
+      warnings: [],
+    };
+  }
+  
+  try {
+    // Leer el contenido del archivo usando Tauri
+    const contents = await invoke<string>("read_text_file", { filePath });
+    const exported = parsePlaylistExport(contents);
+    
+    if (!exported) {
+      return {
+        playlistId: null,
+        totalSongs: 0,
+        matchedSongs: 0,
+        unmatchedSongs: 0,
+        errors: ["Formato de archivo inválido o versión no soportada"],
+        warnings: [],
+      };
+    }
+    
+    // Llamar al backend para importar
+    const result = await invoke<ImportResult>("import_playlist", {
+      exportData: JSON.stringify(exported),
+      targetGroup,
+    });
+    
+    return result;
+  } catch (error) {
+    return {
+      playlistId: null,
+      totalSongs: 0,
+      matchedSongs: 0,
+      unmatchedSongs: 0,
+      errors: [`Error al importar: ${String(error)}`],
+      warnings: [],
+    };
+  }
+}
+
+/**
+ * Verifica si ya existe una playlist con un nombre dado
+ */
+export async function playlistExists(name: string): Promise<boolean> {
+  return invoke<boolean>("playlist_exists", { name });
 }

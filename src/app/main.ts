@@ -2,12 +2,13 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
 import { playlistPdfBytes, playlistPdfFilename } from "./playlist-pdf.js";
 import { playlistOdfBytes, playlistOdfFilename } from "./playlist-odf.js";
+import type { ImportResult } from "./playlist-export.js";
 
 async function bootstrap() {
   const root = document.querySelector("#app") as HTMLElement | null;
@@ -557,6 +558,73 @@ async function bootstrap() {
         }
       } catch (error) {
         state.error = `No se pudo abrir la ventana «Acerca de»: ${String(error)}`;
+        render();
+      }
+      return;
+    }
+
+    if (target.dataset.action === "open-export-playlist") {
+      const playlist = state.playlists.find((entry) => entry.id === state.selectedPlaylistId);
+      if (!playlist) {
+        state.toolsState.importExportError = "Selecciona una sesión para exportar";
+        state.toolsState.importExportStatus = null;
+        render();
+        return;
+      }
+      
+      try {
+        state.toolsState.exportInProgress = true;
+        state.toolsState.importExportError = null;
+        state.toolsState.importExportStatus = "Exportando sesión...";
+        render();
+        
+        const filePath = await exportPlaylist(playlist, state.playlistSongs);
+        
+        if (filePath) {
+          state.toolsState.importExportStatus = `Sesión exportada a: ${filePath}`;
+        } else {
+          state.toolsState.importExportStatus = "Exportación cancelada";
+        }
+        state.toolsState.exportInProgress = false;
+        state.toolsState.importResult = null;
+        render();
+      } catch (error) {
+        state.toolsState.importExportError = `Error al exportar: ${error instanceof Error ? error.message : String(error)}`;
+        state.toolsState.importExportStatus = null;
+        state.toolsState.exportInProgress = false;
+        render();
+      }
+      return;
+    }
+
+    if (target.dataset.action === "open-import-playlist") {
+      try {
+        state.toolsState.importExportError = null;
+        state.toolsState.importExportStatus = "Selecciona un archivo de sesión...";
+        state.toolsState.importResult = null;
+        render();
+        
+        const result = await importPlaylistFile();
+        
+        state.toolsState.importResult = result;
+        
+        if (result.errors && result.errors.length > 0) {
+          state.toolsState.importExportError = result.errors.join("; ");
+        }
+        
+        if (result.playlistId) {
+          state.toolsState.importExportStatus = `Sesión importada correctamente (${result.matchedSongs}/${result.totalSongs} canciones)`;
+          // Recargar datos para mostrar la nueva playlist
+          await refreshData();
+        } else {
+          state.toolsState.importExportStatus = "No se pudo importar la sesión";
+        }
+        
+        render();
+      } catch (error) {
+        state.toolsState.importExportError = `Error al importar: ${error instanceof Error ? error.message : String(error)}`;
+        state.toolsState.importExportStatus = null;
+        state.toolsState.importResult = null;
         render();
       }
       return;
