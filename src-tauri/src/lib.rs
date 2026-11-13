@@ -671,6 +671,30 @@ fn find_matching_song_id(conn: &Connection, exported_song: &ExportedSong) -> Res
     Ok(None)
 }
 
+/// Genera un nombre único para una playlist verificando que no exista en la base de datos
+fn generate_unique_playlist_name(conn: &Connection, original_name: &str) -> Result<String, String> {
+    let mut candidate_name = original_name.to_string();
+    let mut counter = 1;
+
+    loop {
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM playlists WHERE name = ?1",
+                params![candidate_name.clone()],
+                |row| row.get(0),
+            )
+            .map_err(|e| e.to_string())?;
+
+        if count == 0 {
+            return Ok(candidate_name);
+        }
+
+        // Si el nombre ya existe, añadir sufijo
+        counter += 1;
+        candidate_name = format!("{} ({})", original_name, counter);
+    }
+}
+
 /// Importa una playlist desde datos JSON exportados
 #[command]
 fn import_playlist(
@@ -700,10 +724,13 @@ fn import_playlist(
     let created_at = Utc::now().to_rfc3339();
     let group = target_group.or(playlist_data.group);
 
+    // Generar un nombre único para la playlist (evitar conflictos con nombres existentes)
+    let playlist_name = generate_unique_playlist_name(&conn, &playlist_data.name)?;
+
     conn.execute(
         "INSERT INTO playlists (name, description, \"group\", description_extended, purpose, tags, comment, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
-            playlist_data.name,
+            playlist_name,
             playlist_data.description,
             group,
             playlist_data.description_extended,
@@ -716,6 +743,14 @@ fn import_playlist(
     .map_err(|e| e.to_string())?;
 
     let playlist_id = conn.last_insert_rowid();
+
+    // Agregar advertencia si el nombre original ya existía
+    if playlist_name != playlist_data.name {
+        warnings.push(format!(
+            "El nombre de la sesión '{}' ya existía. Se importó como '{}'",
+            playlist_data.name, playlist_name
+        ));
+    }
 
     // Procesar cada canción
     let mut song_mapping: Vec<(usize, i64, String)> = Vec::new(); // (índice, song_id, consigna)

@@ -611,6 +611,11 @@ async function bootstrap() {
           state.toolsState.importExportError = result.errors.join("; ");
         }
         
+        // Mostrar advertencias si existen (por ejemplo, nombre duplicado)
+        if (result.warnings && result.warnings.length > 0) {
+          state.toolsState.importExportError = (state.toolsState.importExportError || "") + (state.toolsState.importExportError ? " \n" : "") + result.warnings.join("; ");
+        }
+        
         if (result.playlistId) {
           state.toolsState.importExportStatus = `Sesión importada correctamente (${result.matchedSongs}/${result.totalSongs} canciones)`;
           // Recargar datos para mostrar la nueva playlist
