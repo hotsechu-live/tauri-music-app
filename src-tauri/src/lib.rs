@@ -544,9 +544,13 @@ struct ExportedSong {
 
 #[derive(Debug, Serialize)]
 struct PlaylistImportResult {
+    #[serde(rename = "playlistId")]
     playlist_id: Option<i64>,
+    #[serde(rename = "totalSongs")]
     total_songs: usize,
+    #[serde(rename = "matchedSongs")]
     matched_songs: usize,
+    #[serde(rename = "unmatchedSongs")]
     unmatched_songs: usize,
     errors: Vec<String>,
     warnings: Vec<String>,

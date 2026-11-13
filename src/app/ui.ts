@@ -405,18 +405,18 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <div class="import-result">
               <h4>Resultado de la importación</h4>
               <p><strong>Sesión:</strong> ${escapeHtml(state.toolsState.importResult.playlistId ? `Creada (ID: ${state.toolsState.importResult.playlistId})` : "No se creó")}</p>
-              <p><strong>Canciones:</strong> ${state.toolsState.importResult.matchedSongs}/${state.toolsState.importResult.totalSongs} coincididas</p>
-              ${state.toolsState.importResult.unmatchedSongs > 0 ? `
-                <p class="warning"><strong>Advertencias:</strong> ${state.toolsState.importResult.unmatchedSongs} canciones no se encontraron en este equipo</p>
+              <p><strong>Canciones:</strong> ${escapeHtml(String(state.toolsState.importResult.matchedSongs ?? 0))}/${escapeHtml(String(state.toolsState.importResult.totalSongs ?? 0))} coincididas</p>
+              ${(state.toolsState.importResult.unmatchedSongs ?? 0) > 0 ? `
+                <p class="warning"><strong>Advertencias:</strong> ${state.toolsState.importResult.unmatchedSongs ?? 0} canciones no se encontraron en este equipo</p>
               ` : ""}
-              ${state.toolsState.importResult.warnings.length > 0 ? `
+              ${(state.toolsState.importResult.warnings || []).length > 0 ? `
                 <ul class="warnings-list">
-                  ${state.toolsState.importResult.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join("")}
+                  ${(state.toolsState.importResult.warnings || []).map(w => `<li>${escapeHtml(w)}</li>`).join("")}
                 </ul>
               ` : ""}
-              ${state.toolsState.importResult.errors.length > 0 ? `
+              ${(state.toolsState.importResult.errors || []).length > 0 ? `
                 <ul class="errors-list">
-                  ${state.toolsState.importResult.errors.map(e => `<li>${escapeHtml(e)}</li>`).join("")}
+                  ${(state.toolsState.importResult.errors || []).map(e => `<li>${escapeHtml(e)}</li>`).join("")}
                 </ul>
               ` : ""}
             </div>
