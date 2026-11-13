@@ -607,17 +607,30 @@ async function bootstrap() {
         
         state.toolsState.importResult = result;
         
-        if (result.errors && result.errors.length > 0) {
+        // Verificar que result es un objeto válido
+        if (!result || typeof result !== 'object') {
+          state.toolsState.importExportError = "Error al importar: resultado inválido";
+          state.toolsState.importExportStatus = "No se pudo importar la sesión";
+          render();
+          return;
+        }
+        
+        // Mostrar errores si existen
+        if (result.errors && Array.isArray(result.errors) && result.errors.length > 0) {
           state.toolsState.importExportError = result.errors.join("; ");
         }
         
         // Mostrar advertencias si existen (por ejemplo, nombre duplicado)
-        if (result.warnings && result.warnings.length > 0) {
-          state.toolsState.importExportError = (state.toolsState.importExportError || "") + (state.toolsState.importExportError ? " \n" : "") + result.warnings.join("; ");
+        if (result.warnings && Array.isArray(result.warnings) && result.warnings.length > 0) {
+          const existingError = state.toolsState.importExportError || "";
+          const separator = existingError ? " \n" : "";
+          state.toolsState.importExportError = existingError + separator + result.warnings.join("; ");
         }
         
         if (result.playlistId) {
-          state.toolsState.importExportStatus = `Sesión importada correctamente (${result.matchedSongs}/${result.totalSongs} canciones)`;
+          const matched = result.matchedSongs ?? 0;
+          const total = result.totalSongs ?? 0;
+          state.toolsState.importExportStatus = `Sesión importada correctamente (${matched}/${total} canciones)`;
           // Recargar datos para mostrar la nueva playlist
           await refreshData();
         } else {
