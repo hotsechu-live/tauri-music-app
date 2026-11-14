@@ -281,16 +281,36 @@ export async function selectRestoreBackup(): Promise<string | null> {
 }
 
 /**
+ * Selecciona la carpeta que contiene las colecciones de musica
+ */
+export async function selectMusicFolder(): Promise<string | null> {
+  const folderPath = await open({
+    title: "Seleccionar carpeta que contiene las colecciones de música",
+    directory: true,
+    multiple: false,
+  });
+
+  if (!folderPath || Array.isArray(folderPath)) {
+    return null;
+  }
+
+  return folderPath as string;
+}
+
+/**
  * Restaura un backup completo
  * @param backupPath - Ruta al archivo ZIP de backup
+ * @param musicFolderPath - Ruta opcional a la carpeta que contiene las colecciones de musica
  * @returns Resultado de la restauracion
  */
 export async function restoreBackup(
-  backupPath: string
+  backupPath: string,
+  musicFolderPath?: string
 ): Promise<RestoreResult> {
   try {
     const result = await invoke<RestoreResult>("restore_backup", {
       backupPath,
+      musicFolderPath: musicFolderPath || null,
     });
     return result;
   } catch (error) {

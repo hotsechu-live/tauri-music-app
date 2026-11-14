@@ -1735,9 +1735,9 @@ fn create_zip_file(src_dir: &Path, dst_path: &Path) -> Result<(), String> {
 
 /// Restaura un backup desde archivo ZIP
 /// Solo restaura la base de datos, NO copia archivos de musica
-/// El usuario debe asegurarse de que la musica este en la ubicacion correcta
+/// Si se proporciona music_folder_path, actualiza las rutas de colecciones y canciones a esa ubicacion
 #[command]
-fn restore_backup(_backup_path: String) -> Result<RestoreResult, String> {
+fn restore_backup(backup_path: String, music_folder_path: Option<String>) -> Result<RestoreResult, String> {
     let mut result = RestoreResult {
         database_restored: false,
         errors: Vec::new(),
@@ -1749,7 +1749,7 @@ fn restore_backup(_backup_path: String) -> Result<RestoreResult, String> {
     let temp_path = temp_dir.path();
 
     // 2. Extraer archivo ZIP
-    extract_zip_file(&_backup_path, temp_path)?;
+    extract_zip_file(&backup_path, temp_path)?;
 
     // 3. Leer y validar manifest.json
     let manifest_path = temp_path.join("manifest.json");
@@ -1793,11 +1793,131 @@ fn restore_backup(_backup_path: String) -> Result<RestoreResult, String> {
         fs::copy(&backup_db_path, db_dest)
             .map_err(|e| format!("No se pudo restaurar la base de datos: {}", e))?;
         result.database_restored = true;
+
+        // 6. Si se proporciona una carpeta de musica, actualizar rutas en la BD
+        if let Some(music_folder) = music_folder_path {
+            update_database_paths(&music_folder).map_err(|e| {
+                result.warnings.push(format!("Advertencia al actualizar rutas: {}", e));
+                e
+            })?;
+        }
     } else {
         result.errors.push("No se encontro base de datos en el backup".to_string());
     }
 
     Ok(result)
+}
+
+/// Actualiza las rutas de colecciones y canciones en la base de datos a una nueva ubicacion base
+fn update_database_paths(music_folder: &str) -> Result<(), String> {
+    let conn = open_connection().map_err(|e| e.to_string())?;
+    let music_folder_normalized = normalize_collection_folder_path(music_folder);
+
+    // Obtener todas las colecciones actuales con sus rutas originales
+    let mut stmt = conn
+        .prepare("SELECT id, name, folder_path FROM collections")
+        .map_err(|e| e.to_string())?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok((
+            row.get::<_, i64>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, String>(2)?,
+        ))
+    }).map_err(|e| e.to_string())?;
+
+    for row in rows {
+        let (collection_id, collection_name, old_folder_path) = row.map_err(|e| e.to_string())?;
+        let old_folder_norm_for_cmp = normalize_path_for_comparison(&old_folder_path);
+
+        // Calcular la ruta relativa de la coleccion respecto a la carpeta original
+        // Si la coleccion ya estaba en una subcarpeta, mantenerla
+        let relative_path = if old_folder_norm_for_cmp.len() > music_folder_normalized.len() {
+            // Intenta obtener la parte relativa
+            let stripped = old_folder_norm_for_cmp.strip_prefix(&music_folder_normalized)
+                .map(|s| s.trim_start_matches('/').to_string())
+                .unwrap_or_else(|| collection_name.clone());
+            if stripped.is_empty() {
+                collection_name.clone()
+            } else {
+                stripped
+            }
+        } else {
+            // Si la carpeta original no contiene la nueva carpeta, usar el nombre de la coleccion
+            collection_name.clone()
+        };
+
+        // Nueva ruta: music_folder + relative_path
+        let new_folder_path = PathBuf::from(&music_folder_normalized).join(&relative_path);
+        let new_folder_normalized = normalize_collection_folder_path(&new_folder_path.to_string_lossy());
+
+        // Actualizar la coleccion
+        conn.execute(
+            "UPDATE collections SET folder_path = ?1 WHERE id = ?2",
+            params![new_folder_normalized, collection_id],
+        ).map_err(|e| e.to_string())?;
+
+        // Actualizar las canciones de esta coleccion
+        let mut song_stmt = conn.prepare("SELECT id, file_path FROM songs WHERE collection_id = ?1")
+            .map_err(|e| e.to_string())?;
+        
+        let song_rows = song_stmt.query_map([collection_id], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        }).map_err(|e| e.to_string())?;
+
+        for song_row in song_rows {
+            let (song_id, old_file_path) = song_row.map_err(|e| e.to_string())?;
+            let old_file_normalized = normalize_path_for_comparison(&old_file_path);
+
+            // Obtener la ruta relativa del archivo dentro de la coleccion
+            let file_relative = if old_file_normalized.starts_with(&old_folder_norm_for_cmp) {
+                old_file_normalized.strip_prefix(&old_folder_norm_for_cmp)
+                    .unwrap_or("")
+                    .trim_start_matches('/')
+                    .to_string()
+            } else {
+                // Si el archivo no esta en la carpeta de la coleccion, mantener la ruta
+                // Pero debemos clonar porque old_file_path se mueve
+                old_file_path.clone()
+            };
+
+            // Nueva ruta del archivo
+            let new_file_path = if !file_relative.is_empty() && file_relative != old_file_path {
+                PathBuf::from(&new_folder_normalized).join(&file_relative)
+            } else {
+                PathBuf::from(&old_file_path)
+            };
+
+            let new_file_normalized = normalize_path_for_comparison(&new_file_path.to_string_lossy());
+
+            conn.execute(
+                "UPDATE songs SET file_path = ?1 WHERE id = ?2",
+                params![new_file_normalized, song_id],
+            ).map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Normaliza una ruta para comparaciones multiplataforma
+fn normalize_path_for_comparison(path: &str) -> String {
+    let trimmed = path.trim();
+    let without_extended_prefix = trimmed.strip_prefix(r"\\?\").unwrap_or(trimmed);
+    let mut normalized = without_extended_prefix.replace('\\', "/");
+
+    // En Windows, convertir a minusculas para comparacion
+    #[cfg(windows)]
+    {
+        normalized = normalized.to_lowercase();
+    }
+
+    // Eliminar trailing slash
+    while normalized.ends_with('/') && normalized.len() > 1 {
+        normalized.pop();
+    }
+
+    normalized
 }
 
 /// Extrae un archivo ZIP

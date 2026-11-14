@@ -2,7 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile, createBackup, selectRestoreBackup, restoreBackup } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile, createBackup, selectRestoreBackup, selectMusicFolder, restoreBackup } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
@@ -692,17 +692,29 @@ async function bootstrap() {
           return;
         }
 
-        // Paso 2: Ejecutar restauracion (solo BD, sin copiar musica)
+        // Paso 2: Preguntar por la carpeta de musica (opcional)
+        state.toolsState.restoreStatus = "Seleccionando carpeta de música (opcional)...";
+        render();
+
+        const musicFolder = await selectMusicFolder();
+        // Si el usuario cancela la seleccion de carpeta, Continuar sin actualizar rutas
+        // (asumimos que la musica ya esta en su ubicacion original)
+
+        // Paso 3: Ejecutar restauracion
         state.toolsState.restoreStatus = "Restaurando base de datos...";
         render();
 
-        const result = await restoreBackup(backupPath);
+        const result = await restoreBackup(backupPath, musicFolder || undefined);
 
         state.toolsState.restoreResult = result;
         state.toolsState.restoreInProgress = false;
 
         if (result.databaseRestored) {
-          state.toolsState.restoreStatus = "Base de datos restaurada correctamente. Las colecciones de música deben estar en su ubicación original.";
+          if (musicFolder) {
+            state.toolsState.restoreStatus = "Base de datos restaurada y rutas actualizadas correctamente.";
+          } else {
+            state.toolsState.restoreStatus = "Base de datos restaurada. Las colecciones de música deben estar en su ubicación original.";
+          }
           // Recargar todos los datos de la aplicacion
           await refreshData();
         } else {

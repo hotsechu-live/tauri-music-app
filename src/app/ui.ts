@@ -435,8 +435,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
           <h3>Backup y Restauración</h3>
           <p class="tools-description">
             Crea un backup de la base de datos (colecciones, canciones, sesiones y metadatos) en un archivo ZIP. 
-            <strong>No incluye los archivos de música.</strong> El usuario debe copiar manualmente los archivos de música si es necesario. 
-            El restore solo restaura la base de datos, las colecciones de música deben estar en su ubicación original.
+            <strong>No incluye los archivos de música.</strong> 
+            Al restaurar, se puede especificar la carpeta donde se encuentran las colecciones de música para actualizar las rutas en la base de datos.
           </p>
           
           <div class="tools-actions">
