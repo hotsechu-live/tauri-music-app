@@ -281,42 +281,21 @@ export async function selectRestoreBackup(): Promise<string | null> {
 }
 
 /**
- * Selecciona el directorio destino para restaurar los archivos de musica
- */
-export async function selectRestoreTargetDirectory(): Promise<string | null> {
-  const dirPath = await open({
-    title: "Seleccionar carpeta para restaurar la musica",
-    directory: true,
-    multiple: false,
-  });
-
-  if (!dirPath || Array.isArray(dirPath)) {
-    return null;
-  }
-
-  return dirPath as string;
-}
-
-/**
  * Restaura un backup completo
  * @param backupPath - Ruta al archivo ZIP de backup
- * @param targetMusicDir - Ruta al directorio donde copiar los archivos de musica
  * @returns Resultado de la restauracion
  */
 export async function restoreBackup(
-  backupPath: string,
-  targetMusicDir: string
+  backupPath: string
 ): Promise<RestoreResult> {
   try {
     const result = await invoke<RestoreResult>("restore_backup", {
       backupPath,
-      targetMusicDir,
     });
     return result;
   } catch (error) {
     return {
       databaseRestored: false,
-      collectionsRestored: [],
       errors: [`Error al restaurar: ${String(error)}`],
       warnings: [],
     };

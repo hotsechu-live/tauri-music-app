@@ -3,15 +3,8 @@ import type { ImportResult } from "./playlist-export.js";
 // Tipos para backup/restore
 export type RestoreResult = {
   databaseRestored: boolean;
-  collectionsRestored: RestoreCollectionResult[];
   errors: string[];
   warnings: string[];
-};
-
-export type RestoreCollectionResult = {
-  collectionName: string;
-  filesRestored: number;
-  filesSkipped: number;
 };
 
 export type Song = {

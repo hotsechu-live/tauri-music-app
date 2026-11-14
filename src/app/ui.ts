@@ -434,8 +434,9 @@ export function renderApp(state: AppState, root: HTMLElement) {
         <div class="tools-section">
           <h3>Backup y Restauración</h3>
           <p class="tools-description">
-            Crea un backup completo de todas las colecciones, canciones y sesiones en un archivo ZIP. 
-            El restore pregunta dónde copiar los archivos de música, permitiendo restaurar en cualquier sistema operativo.
+            Crea un backup de la base de datos (colecciones, canciones, sesiones y metadatos) en un archivo ZIP. 
+            <strong>No incluye los archivos de música.</strong> El usuario debe copiar manualmente los archivos de música si es necesario. 
+            El restore solo restaura la base de datos, las colecciones de música deben estar en su ubicación original.
           </p>
           
           <div class="tools-actions">
@@ -457,6 +458,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <div class="backup-result">
               <h4>Backup creado</h4>
               <p><strong>Archivo:</strong> ${escapeHtml(state.toolsState.backupResult)}</p>
+              <p class="info-message">Solo se ha respaldado la base de datos. Los archivos de música deben copiarse manualmente si es necesario.</p>
             </div>
           ` : ''}
 
@@ -476,12 +478,6 @@ export function renderApp(state: AppState, root: HTMLElement) {
               <p><strong>Base de datos:</strong> ${
                 state.toolsState.restoreResult.databaseRestored ? "✓ Restaurada" : "✗ No restaurada"
               }</p>
-              <p><strong>Colecciones:</strong></p>
-              <ul>
-                ${state.toolsState.restoreResult.collectionsRestored.map(c => `
-                  <li>${escapeHtml(c.collectionName)}: ${c.filesRestored} archivos restaurados, ${c.filesSkipped} omitidos</li>
-                `).join('')}
-              </ul>
               ${state.toolsState.restoreResult.warnings.length > 0 ? `
                 <p class="warning"><strong>Advertencias:</strong></p>
                 <ul class="warnings-list">

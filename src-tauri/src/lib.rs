@@ -1633,144 +1633,48 @@ fn delete_custom_metadata_definition(key: String) -> Result<String, String> {
 use zip::write::FileOptions;
 use zip::ZipWriter;
 
-/// Estructuras para backup
+/// Estructura para backup (solo metadatos, sin archivos de musica)
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct BackupManifest {
     version: u32,
     created_at: String,
     app_version: String,
-    collections: Vec<BackupCollection>,
     database_hash: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct BackupCollection {
-    id: i64,
-    name: String,
-    original_path: String,
-    files: Vec<BackupFile>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-struct BackupFile {
-    relative_path: String,
-    sha256: String,
-    size: u64,
 }
 
 /// Estructura para resultado de restore
 #[derive(Debug, Serialize)]
 struct RestoreResult {
     database_restored: bool,
-    collections_restored: Vec<RestoreCollectionResult>,
     errors: Vec<String>,
     warnings: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
-struct RestoreCollectionResult {
-    collection_name: String,
-    files_restored: usize,
-    files_skipped: usize,
-}
-
-/// Normaliza una ruta para comparaciones multiplataforma
-fn normalize_path_for_comparison(path: &str) -> String {
-    let trimmed = path.trim();
-    let without_extended_prefix = trimmed.strip_prefix(r"\\?\").unwrap_or(trimmed);
-    let mut normalized = without_extended_prefix.replace('\\', "/");
-
-    // En Windows, convertir a minusculas para comparacion
-    #[cfg(windows)]
-    {
-        normalized = normalized.to_lowercase();
-    }
-
-    // Eliminar trailing slash
-    while normalized.ends_with('/') && normalized.len() > 1 {
-        normalized.pop();
-    }
-
-    normalized
-}
-
-/// Obtiene la ruta relativa de un archivo respecto a su coleccion
-fn get_relative_path_from_collection(collection_path: &str, file_path: &str) -> Result<String, String> {
-    let collection_normalized = normalize_path_for_comparison(collection_path);
-    let file_normalized = normalize_path_for_comparison(file_path);
-
-    if !file_normalized.starts_with(&collection_normalized) {
-        return Err(format!(
-            "File path {} is not within collection {}",
-            file_path, collection_path
-        ));
-    }
-
-    let relative = file_normalized
-        .strip_prefix(&collection_normalized)
-        .ok_or_else(|| format!("Cannot get relative path for {}", file_path))?
-        .trim_start_matches('/')
-        .to_string();
-
-    Ok(relative)
-}
-
-/// Crea un backup completo en formato ZIP
+/// Crea un backup de la base de datos en formato ZIP
+/// Solo guarda la base de datos, NO los archivos de musica
 #[command]
 fn create_backup(backup_path: String) -> Result<String, String> {
-    let conn = open_connection().map_err(|e| e.to_string())?;
-
-    // 1. Obtener todas las colecciones con sus archivos
-    let collections = get_collections_with_files(&conn)?;
-
-    // 2. Crear directorio temporal
+    // 1. Crear directorio temporal
     let temp_dir = tempfile::tempdir().map_err(|e| format!("No se pudo crear directorio temporal: {}", e))?;
     let temp_path = temp_dir.path();
 
-    // 3. Crear estructura de directorios
+    // 2. Crear directorio para la base de datos
     let db_temp_dir = temp_path.join("database");
-    let collections_temp_dir = temp_path.join("collections");
     fs::create_dir_all(&db_temp_dir).map_err(|e| format!("No se pudo crear directorio database: {}", e))?;
-    fs::create_dir_all(&collections_temp_dir).map_err(|e| format!("No se pudo crear directorio collections: {}", e))?;
 
-    // 4. Copiar base de datos
+    // 3. Copiar base de datos
     let db_src_path = db_path().map_err(|e| format!("Error al obtener ruta de BD: {}", e))?;
     let db_dest_path = db_temp_dir.join("music_app.sqlite");
     fs::copy(db_src_path, &db_dest_path).map_err(|e| format!("No se pudo copiar la base de datos: {}", e))?;
 
-    // 5. Copiar archivos de musica
-    let mut all_files: Vec<BackupFile> = Vec::new();
-    for collection in &collections {
-        let collection_temp_dir = collections_temp_dir.join(&collection.name);
-        fs::create_dir_all(&collection_temp_dir).map_err(|e| e.to_string())?;
-
-        for file_info in &collection.files {
-            let src_path = PathBuf::from(&collection.original_path).join(&file_info.relative_path);
-            let dst_path = collection_temp_dir.join(&file_info.relative_path);
-
-            // Crear directorios padre si es necesario
-            if let Some(parent) = dst_path.parent() {
-                if !parent.exists() {
-                    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-                }
-            }
-
-            // Copiar archivo
-            fs::copy(&src_path, &dst_path)
-                .map_err(|e| format!("No se pudo copiar {}: {}", file_info.relative_path, e))?;
-        }
-        all_files.extend(collection.files.clone());
-    }
-
-    // 6. Calcular hash de la BD
+    // 4. Calcular hash de la BD
     let db_hash = calculate_file_hash(db_dest_path.to_str().unwrap())?;
 
-    // 7. Crear manifest.json
+    // 5. Crear manifest.json
     let manifest = BackupManifest {
         version: 1,
         created_at: Utc::now().to_rfc3339(),
         app_version: "1.0".to_string(),
-        collections: collections,
         database_hash: db_hash,
     };
 
@@ -1780,66 +1684,13 @@ fn create_backup(backup_path: String) -> Result<String, String> {
     fs::write(&manifest_path, manifest_content)
         .map_err(|e| format!("No se pudo escribir manifest.json: {}", e))?;
 
-    // 8. Crear archivo ZIP
+    // 6. Crear archivo ZIP
     let zip_dest_path = PathBuf::from(&backup_path);
     create_zip_file(&temp_path, &zip_dest_path)?;
 
     // El directorio temporal se borra automaticamente al salir de scope
 
     Ok(zip_dest_path.to_string_lossy().into_owned())
-}
-
-/// Obtiene colecciones con sus archivos para backup
-fn get_collections_with_files(conn: &Connection) -> Result<Vec<BackupCollection>, String> {
-    let mut stmt = conn
-        .prepare("SELECT id, name, folder_path FROM collections ORDER BY name")
-        .map_err(|e| e.to_string())?;
-
-    let mut collections: Vec<BackupCollection> = Vec::new();
-    
-    let rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-        ))
-    }).map_err(|e| e.to_string())?;
-
-    for row in rows {
-        let (id, name, folder_path) = row.map_err(|e| e.to_string())?;
-
-        // Obtener canciones de esta coleccion
-        let mut song_stmt = conn
-            .prepare("SELECT file_path FROM songs WHERE collection_id = ?1")
-            .map_err(|e| e.to_string())?;
-
-        let mut files: Vec<BackupFile> = Vec::new();
-        let song_rows = song_stmt.query_map([id], |song_row| {
-            Ok(song_row.get::<_, String>(0)?)
-        }).map_err(|e| e.to_string())?;
-
-        for song_row in song_rows {
-            let full_path: String = song_row.map_err(|e| e.to_string())?;
-            let relative_path = get_relative_path_from_collection(&folder_path, &full_path)?;
-            let file_sha256 = calculate_file_hash(&full_path)?;
-            let file_size = fs::metadata(&full_path).map_err(|e| format!("Error al obtener metadata de {}: {}", full_path, e))?.len();
-
-            files.push(BackupFile {
-                relative_path,
-                sha256: file_sha256,
-                size: file_size,
-            });
-        }
-
-        collections.push(BackupCollection {
-            id,
-            name,
-            original_path: folder_path,
-            files,
-        });
-    }
-
-    Ok(collections)
 }
 
 /// Crea un archivo ZIP a partir de un directorio
@@ -1883,11 +1734,12 @@ fn create_zip_file(src_dir: &Path, dst_path: &Path) -> Result<(), String> {
 }
 
 /// Restaura un backup desde archivo ZIP
+/// Solo restaura la base de datos, NO copia archivos de musica
+/// El usuario debe asegurarse de que la musica este en la ubicacion correcta
 #[command]
-fn restore_backup(backup_path: String, target_music_dir: String) -> Result<RestoreResult, String> {
+fn restore_backup(_backup_path: String) -> Result<RestoreResult, String> {
     let mut result = RestoreResult {
         database_restored: false,
-        collections_restored: Vec::new(),
         errors: Vec::new(),
         warnings: Vec::new(),
     };
@@ -1897,7 +1749,7 @@ fn restore_backup(backup_path: String, target_music_dir: String) -> Result<Resto
     let temp_path = temp_dir.path();
 
     // 2. Extraer archivo ZIP
-    extract_zip_file(&backup_path, temp_path)?;
+    extract_zip_file(&_backup_path, temp_path)?;
 
     // 3. Leer y validar manifest.json
     let manifest_path = temp_path.join("manifest.json");
@@ -1908,12 +1760,12 @@ fn restore_backup(backup_path: String, target_music_dir: String) -> Result<Resto
     let manifest_content = fs::read_to_string(&manifest_path)
         .map_err(|e| format!("No se pudo leer manifest.json: {}", e))?;
 
-    let manifest: BackupManifest = serde_json::from_str(&manifest_content)
+    let _manifest: BackupManifest = serde_json::from_str(&manifest_content)
         .map_err(|e| format!("Error al parsear manifest.json: {}", e))?;
 
     // 4. Validar version
-    if manifest.version != 1 {
-        return Err(format!("Version de backup no soportada: {}", manifest.version));
+    if _manifest.version != 1 {
+        return Err(format!("Version de backup no soportada: {}", _manifest.version));
     }
 
     // 5. Restaurar base de datos
@@ -1942,97 +1794,8 @@ fn restore_backup(backup_path: String, target_music_dir: String) -> Result<Resto
             .map_err(|e| format!("No se pudo restaurar la base de datos: {}", e))?;
         result.database_restored = true;
     } else {
-        result.errors.push("No se comenzo base de datos en el backup".to_string());
+        result.errors.push("No se encontro base de datos en el backup".to_string());
     }
-
-    // 6. Crear directorio destino para musica
-    let music_target_path = PathBuf::from(&target_music_dir);
-    if music_target_path.exists() && !music_target_path.is_dir() {
-        return Err(format!(
-            "La ruta de destino ya existe y no es un directorio: {}",
-            target_music_dir
-        ));
-    }
-    fs::create_dir_all(&music_target_path)
-        .map_err(|e| format!("No se pudo crear directorio destino: {}", e))?;
-
-    // 7. Restaurar archivos de musica
-    let collections_temp_dir = temp_path.join("collections");
-    if collections_temp_dir.exists() {
-        for collection_manifest in &manifest.collections {
-            let collection_src = collections_temp_dir.join(&collection_manifest.name);
-            if !collection_src.exists() {
-                result.warnings.push(format!(
-                    "No se comenzo carpeta para coleccion: {}",
-                    collection_manifest.name
-                ));
-                continue;
-            }
-
-            let collection_target = music_target_path.join(&collection_manifest.name);
-
-            // Crear directorio de coleccion
-            fs::create_dir_all(&collection_target)
-                .map_err(|e| format!("No se pudo crear directorio {}: {}", collection_manifest.name, e))?;
-
-            let mut files_restored = 0;
-            let mut files_skipped = 0;
-
-            // Copiar archivos
-            let walker = WalkDir::new(&collection_src).into_iter();
-            for entry in walker {
-                let entry = entry.map_err(|e| e.to_string())?;
-                if !entry.path().is_file() {
-                    continue;
-                }
-
-                let relative = entry.path()
-                    .strip_prefix(&collection_src)
-                    .map_err(|e| e.to_string())?;
-                let target_path = collection_target.join(relative);
-
-                // Crear directorios padre
-                if let Some(parent) = target_path.parent() {
-                    fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-                }
-
-                // Verificar si ya existe
-                if target_path.exists() {
-                    let src_hash = calculate_file_hash(entry.path().to_str().unwrap())?;
-
-                    // Buscar el archivo en el manifest
-                    if let Some(backup_file) = collection_manifest.files.iter().find(|f| {
-                        f.relative_path == relative.to_string_lossy()
-                    }) {
-                        if src_hash == backup_file.sha256 {
-                            // Archivo identico, omitir
-                            files_skipped += 1;
-                            continue;
-                        } else {
-                            result.warnings.push(format!(
-                                "El archivo {} ya existe y es diferente. Se sobrescribira.",
-                                target_path.display()
-                            ));
-                        }
-                    }
-                }
-
-                // Copiar archivo
-                fs::copy(entry.path(), &target_path)
-                    .map_err(|e| format!("No se pudo copiar {}: {}", relative.display(), e))?;
-                files_restored += 1;
-            }
-
-            result.collections_restored.push(RestoreCollectionResult {
-                collection_name: collection_manifest.name.clone(),
-                files_restored,
-                files_skipped,
-            });
-        }
-    }
-
-    // 8. Actualizar rutas en la base de datos
-    update_database_paths_after_restore(&manifest, &target_music_dir)?;
 
     Ok(result)
 }
@@ -2080,62 +1843,6 @@ fn extract_zip_file(zip_path: &str, target_dir: &Path) -> Result<(), String> {
 
         let _ = std::io::copy(&mut file, &mut outfile)
             .map_err(|e| format!("Error al extraer {}: {}", outpath.display(), e))?;
-    }
-
-    Ok(())
-}
-
-/// Actualiza las rutas de colecciones y canciones en la base de datos despues de restore
-fn update_database_paths_after_restore(manifest: &BackupManifest, target_music_dir: &str) -> Result<(), String> {
-    let conn = open_connection().map_err(|e| e.to_string())?;
-    let target_path = PathBuf::from(target_music_dir);
-
-    for collection in &manifest.collections {
-        let new_path = target_path.join(&collection.name);
-        let normalized_new_path = normalize_collection_folder_path(&new_path.to_string_lossy());
-
-        conn.execute(
-            "UPDATE collections SET folder_path = ?1 WHERE name = ?2",
-            params![normalized_new_path, collection.name.clone()],
-        )
-        .map_err(|e| e.to_string())?;
-    }
-
-    // Actualizar rutas de canciones
-    let mut stmt = conn
-        .prepare("SELECT id, file_path, collection_id FROM songs")
-        .map_err(|e| e.to_string())?;
-
-    let mut songs: Vec<(i64, String, i64)> = Vec::new();
-    let song_rows = stmt.query_map([], |row| {
-        Ok((
-            row.get::<_, i64>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, i64>(2)?,
-        ))
-    }).map_err(|e| e.to_string())?;
-    
-    for song_row in song_rows {
-        songs.push(song_row.map_err(|e| e.to_string())?);
-    }
-
-    for (song_id, old_path, collection_id) in songs {
-        // Encontrar la coleccion correspondiente
-        if let Some(collection) = manifest.collections.iter().find(|c| c.id == collection_id) {
-            // Obtener ruta relativa del archivo en la coleccion
-            if let Ok(relative_path) = get_relative_path_from_collection(&collection.original_path, &old_path) {
-                let new_path = target_path.join(&collection.name).join(&relative_path);
-                let normalized_new_path = normalize_path_for_comparison(
-                    &new_path.to_string_lossy()
-                );
-
-                conn.execute(
-                    "UPDATE songs SET file_path = ?1 WHERE id = ?2",
-                    params![normalized_new_path, song_id],
-                )
-                .map_err(|e| e.to_string())?;
-            }
-        }
     }
 
     Ok(())

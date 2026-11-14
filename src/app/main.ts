@@ -2,7 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile, createBackup, selectRestoreBackup, selectRestoreTargetDirectory, restoreBackup } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile, createBackup, selectRestoreBackup, restoreBackup } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
@@ -660,7 +660,7 @@ async function bootstrap() {
 
         if (backupPath) {
           state.toolsState.backupResult = backupPath;
-          state.toolsState.backupStatus = "Backup creado correctamente";
+          state.toolsState.backupStatus = "Backup creado correctamente. Solo se ha respaldado la base de datos. La música debe copiarse manualmente.";
         } else {
           state.toolsState.backupStatus = "Backup cancelado";
         }
@@ -692,33 +692,21 @@ async function bootstrap() {
           return;
         }
 
-        // Paso 2: Preguntar donde copiar la musica
-        state.toolsState.restoreStatus = "Seleccionando carpeta de destino...";
+        // Paso 2: Ejecutar restauracion (solo BD, sin copiar musica)
+        state.toolsState.restoreStatus = "Restaurando base de datos...";
         render();
 
-        const targetDir = await selectRestoreTargetDirectory();
-        if (!targetDir) {
-          state.toolsState.restoreStatus = "Restauracion cancelada";
-          state.toolsState.restoreInProgress = false;
-          render();
-          return;
-        }
-
-        // Paso 3: Ejecutar restauracion
-        state.toolsState.restoreStatus = "Restaurando datos...";
-        render();
-
-        const result = await restoreBackup(backupPath, targetDir);
+        const result = await restoreBackup(backupPath);
 
         state.toolsState.restoreResult = result;
         state.toolsState.restoreInProgress = false;
 
-        if (result.databaseRestored || result.collectionsRestored.length > 0) {
-          state.toolsState.restoreStatus = "Restauracion completada";
+        if (result.databaseRestored) {
+          state.toolsState.restoreStatus = "Base de datos restaurada correctamente. Las colecciones de música deben estar en su ubicación original.";
           // Recargar todos los datos de la aplicacion
           await refreshData();
         } else {
-          state.toolsState.restoreStatus = "No se pudieron restaurar datos";
+          state.toolsState.restoreStatus = "No se pudo restaurar la base de datos";
         }
 
         render();
