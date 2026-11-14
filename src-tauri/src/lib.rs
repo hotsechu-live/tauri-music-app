@@ -1796,13 +1796,32 @@ fn restore_backup(backup_path: String, music_folder_path: Option<String>) -> Res
 
         // 6. Si se proporciona una carpeta de musica, actualizar rutas en la BD
         if let Some(music_folder) = music_folder_path {
-            update_database_paths(&music_folder).map_err(|e| {
-                result.warnings.push(format!("Advertencia al actualizar rutas: {}", e));
-                e
-            })?;
+            if music_folder.trim().is_empty() {
+                result.warnings.push("No se proporciono carpeta de musica valida para actualizar rutas".to_string());
+            } else {
+                match update_database_paths(&music_folder) {
+                    Ok(_) => {
+                        result.warnings.push("Rutas de colecciones y canciones actualizadas correctamente".to_string());
+                    }
+                    Err(e) => {
+                        result.warnings.push(format!("Advertencia al actualizar rutas: {}", e));
+                        // No devolvemos error, solo advertencia, porque la BD ya se restauró
+                    }
+                }
+            }
         }
     } else {
-        result.errors.push("No se encontro base de datos en el backup".to_string());
+        // Listar lo que hay en el directorio temporal para depurar
+        let entries: Vec<String> = WalkDir::new(temp_path)
+            .max_depth(2)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .map(|e| e.path().to_string_lossy().into_owned())
+            .collect();
+        result.errors.push(format!(
+            "No se encuentro base de datos en el backup. Contenido del backup: {}",
+            entries.join(", ")
+        ));
     }
 
     Ok(result)
