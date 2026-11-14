@@ -18,10 +18,24 @@
       <h1>Tauri Music App</h1>
       <p>Aplicación para reproducir la música que se utiliza en Biodanza, crear sesiones y organizarlas por grupos.</p>
       <p>Toda la información se guarda en local, no es necesario acceso a internet.</p>
-      <P>Las colecciones de música se corresponden con los elencos oficiales publicados de Biodanza.</P>
+      <p>Las colecciones de música se corresponden con los elencos oficiales publicados de Biodanza.</p>
       <p>Es posible añadir nuevos metadatos a las canciones, así como incluir las consignas asociadas a cada canción en una sesión.</p>
       <p>Autor: <i>José G. Arribas (https://www.hotsechu.es)</i></p>
-      <p class="version">Versión 1.0</p>
+      <p id="version" class="version">Versión 1.0.0</p>
     </main>
+    <script>
+      // Obtener versión desde Tauri API
+      async function getAppVersion() {
+        try {
+          const version = await window.__TAURI__?.app?.getVersion?.();
+          if (version) {
+            document.getElementById("version").textContent = `Versión ${version}`;
+          }
+        } catch (error) {
+          console.error("Error al obtener versión:", error);
+        }
+      }
+      getAppVersion();
+    </script>
   </body>
 </html>

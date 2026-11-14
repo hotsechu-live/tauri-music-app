@@ -10,6 +10,7 @@ export default defineConfig(async () => ({
     rollupOptions: {
       input: {
         main: resolve(__dirname, "index.html"),
+        about: resolve(__dirname, "about.html"),
         metadata: resolve(__dirname, "metadata.html"),
         metadataManager: resolve(__dirname, "metadata-manager.html"),
         addToPlaylist: resolve(__dirname, "add-to-playlist.html"),
