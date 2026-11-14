@@ -1919,6 +1919,33 @@ fn update_database_paths(music_folder: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// Actualiza las rutas de colecciones y canciones en la base de datos actual a una nueva ubicacion base
+/// Esta funcion NO restaura desde backup, solo actualiza las rutas existentes
+#[command]
+fn update_music_paths(music_folder: String) -> Result<RestoreResult, String> {
+    let mut result = RestoreResult {
+        database_restored: false, // No se restaura BD, solo se actualizan rutas
+        errors: Vec::new(),
+        warnings: Vec::new(),
+    };
+
+    if music_folder.trim().is_empty() {
+        result.errors.push("No se proporciono una carpeta de musica valida".to_string());
+        return Ok(result);
+    }
+
+    match update_database_paths(&music_folder) {
+        Ok(_) => {
+            result.warnings.push("Rutas de colecciones y canciones actualizadas correctamente".to_string());
+        }
+        Err(e) => {
+            result.errors.push(format!("Error al actualizar rutas: {}", e));
+        }
+    }
+
+    Ok(result)
+}
+
 /// Normaliza una ruta para comparaciones multiplataforma
 fn normalize_path_for_comparison(path: &str) -> String {
     let trimmed = path.trim();
@@ -2253,7 +2280,8 @@ pub fn run() {
             playlist_exists,
             read_text_file,
             create_backup,
-            restore_backup
+            restore_backup,
+            update_music_paths
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

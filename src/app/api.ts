@@ -321,3 +321,25 @@ export async function restoreBackup(
     };
   }
 }
+
+/**
+ * Actualiza las rutas de música en la base de datos actual
+ * @param musicFolderPath - Ruta a la nueva carpeta que contiene las colecciones de música
+ * @returns Resultado con advertencias o errores
+ */
+export async function updateMusicPaths(
+  musicFolderPath: string
+): Promise<RestoreResult> {
+  try {
+    const result = await invoke<RestoreResult>("update_music_paths", {
+      musicFolderPath,
+    });
+    return result;
+  } catch (error) {
+    return {
+      databaseRestored: false,
+      errors: [`Error al actualizar rutas: ${String(error)}`],
+      warnings: [],
+    };
+  }
+}

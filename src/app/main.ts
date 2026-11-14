@@ -2,7 +2,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { confirm, open, save } from "@tauri-apps/plugin-dialog";
-import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile, createBackup, selectRestoreBackup, selectMusicFolder, restoreBackup } from "./api.js";
+import { initDatabase, playNativeAudio, pauseNativeAudio, resumeNativeAudio, stopNativeAudio, seekNativeAudio, setNativeAudioVolume, importCollection, listSongs, listCollections, renameCollection, deleteCollection, createPlaylist, updatePlaylist, deletePlaylist, removeSongFromPlaylist, reorderPlaylistSongs, listPlaylists, listPlaylistSongs, writePdfFile, writeOdfFile, createCustomMetadataDefinition, deleteCustomMetadataDefinition, listCustomMetadataDefinitions, renameCustomMetadataDefinition, exportPlaylist, importPlaylistFile, createBackup, selectRestoreBackup, selectMusicFolder, restoreBackup, updateMusicPaths } from "./api.js";
 import { getInitialState, renderApp, updatePlaybackProgress } from "./ui.js";
 import { filterSongs } from "./search.js";
 import type { Song } from "./state.js";
@@ -757,6 +757,50 @@ async function bootstrap() {
       } catch (error) {
         state.status = "";
         state.error = `No se pudo abrir el selector de carpetas: ${error instanceof Error ? error.message : String(error)}`;
+        render();
+      }
+      return;
+    }
+
+    // Accion para actualizar rutas de musica sin restaurar backup
+    if (target.dataset.action === "update-music-paths") {
+      try {
+        state.toolsState.restoreInProgress = true;
+        state.toolsState.restoreStatus = "Seleccionando carpeta de música...";
+        state.toolsState.restoreError = null;
+        state.toolsState.restoreResult = null;
+        render();
+
+        const musicFolder = await selectMusicFolder();
+        if (!musicFolder) {
+          state.toolsState.restoreStatus = "Actualizacion cancelada";
+          state.toolsState.restoreInProgress = false;
+          render();
+          return;
+        }
+
+        state.toolsState.restoreStatus = "Actualizando rutas...";
+        render();
+
+        const result = await updateMusicPaths(musicFolder);
+
+        state.toolsState.restoreResult = result;
+        state.toolsState.restoreInProgress = false;
+
+        if (result.errors.length === 0) {
+          state.toolsState.restoreStatus = "Rutas actualizadas correctamente";
+          // Recargar todos los datos de la aplicacion
+          await refreshData();
+        } else {
+          state.toolsState.restoreStatus = "Error al actualizar rutas";
+        }
+
+        render();
+      } catch (error) {
+        state.toolsState.restoreError = `Error al actualizar rutas: ${error instanceof Error ? error.message : String(error)}`;
+        state.toolsState.restoreInProgress = false;
+        state.toolsState.restoreStatus = null;
+        state.toolsState.restoreResult = null;
         render();
       }
       return;

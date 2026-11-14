@@ -438,6 +438,13 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <strong>No incluye los archivos de música.</strong> 
             Al restaurar, se puede especificar la carpeta donde se encuentran las colecciones de música para actualizar las rutas en la base de datos.
           </p>
+          <p class="tools-description warning">
+            <strong>Importante:</strong> Los backups creados con versiones antiguas pueden no ser compatibles. 
+            Si el restore falla, crea un nuevo backup con esta versión.
+          </p>
+          <p class="tools-description">
+            Usa "Actualizar rutas de música" si has movido los archivos de música a otra carpeta y quieres que la aplicación los encuentre sin restaurar un backup.
+          </p>
           
           <div class="tools-actions">
             <button id="backup-btn" data-action="create-backup" class="tools-button">
@@ -445,6 +452,9 @@ export function renderApp(state: AppState, root: HTMLElement) {
             </button>
             <button id="restore-btn" data-action="open-restore" class="tools-button">
               🔄 Restaurar Backup
+            </button>
+            <button id="update-paths-btn" data-action="update-music-paths" class="tools-button">
+              📍 Actualizar rutas de música
             </button>
           </div>
           
