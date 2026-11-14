@@ -16,7 +16,7 @@ Actualiza la version en package.json, Cargo.toml y tauri.conf.json.
 La nueva version en formato X.Y.Z (ej: 1.1.0)
 
 .EJEMPLO
-."update_version.ps1" -Version "1.1.0"
+.\"update_version.ps1\" -Version \"1.1.0\"
 
 .NOTA
 Requiere PowerShell 5.1 o superior
@@ -46,41 +46,32 @@ function Update-FileVersion {
     )
     
     if (-not (Test-Path -Path $FilePath)) {
-        Write-Host "✗ No se Tales el archivo: $FilePath" -ForegroundColor Red
+        Write-Host "No se encontro el archivo: $FilePath" -ForegroundColor Red
         return $false
     }
     
     try {
         # Leer el contenido del archivo
         $Content = Get-Content -Path $FilePath -Raw
+        $OriginalContent = $Content
         
-        # Patrones para buscar la version
-        $Patterns = @(
-            "`"version`": `"[0-9]+\.[0-9]+\.[0-9]+`"",  # JSON
-            "version = `"[0-9]+\.[0-9]+\.[0-9]+`""       # TOML
-        )
+        # Reemplazar version en formato JSON: "version": "X.Y.Z"
+        $Content = [regex]::Replace($Content, '("version"\s*:\s*")[0-9]+\.[0-9]+\.[0-9]+(")', "`${1}$Version`${2}")
         
-        $Updated = $false
-        foreach ($Pattern in $Patterns) {
-            if ($Content -match $Pattern) {
-                $NewContent = $Content -replace $Pattern, $Content -replace "[0-9]+\.[0-9]+\.[0-9]+", $Version
-                # Corregir el reemplazo
-                $NewContent = $Content -replace $Pattern, ($Pattern -replace "[0-9]+\.[0-9]+\.[0-9]+", $Version)
-                Set-Content -Path $FilePath -Value $NewContent -NoNewline
-                $Updated = $true
-                break
-            }
-        }
+        # Reemplazar version en formato TOML: version = "X.Y.Z"
+        $Content = [regex]::Replace($Content, '(version\s*=\s*")[0-9]+\.[0-9]+\.[0-9]+(")', "`${1}$Version`${2}")
         
-        if ($Updated) {
-            Write-Host "✓ Actualizado: $FilePath" -ForegroundColor Green
-            return $true
-        } else {
-            Write-Host "✗ No se hubo patron de version en: $FilePath" -ForegroundColor Yellow
+        # Verificar si hubo cambios
+        if ($Content -eq $OriginalContent) {
+            Write-Host "No se encontro patron de version en: $FilePath" -ForegroundColor Yellow
             return $false
         }
+        
+        Set-Content -Path $FilePath -Value $Content -NoNewline
+        Write-Host "Actualizado: $FilePath" -ForegroundColor Green
+        return $true
     } catch {
-        Write-Host "✗ Error al actualizar $FilePath : $_" -ForegroundColor Red
+        Write-Host "Error al actualizar $FilePath : $_" -ForegroundColor Red
         return $false
     }
 }
