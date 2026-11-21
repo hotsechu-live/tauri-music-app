@@ -530,6 +530,22 @@ async function bootstrap() {
 
     if (target.dataset.action === "navigate") {
       state.activeView = target.dataset.view as typeof state.activeView;
+      if (target.dataset.view === "playlists") {
+        state.playlistGroupFilter = null;
+        state.selectedPlaylistId = null;
+        state.playlistSongs = [];
+      }
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "select-playlist") {
+      const playlistId = Number(target.dataset.id);
+      state.selectedPlaylistId = Number.isInteger(playlistId) && playlistId > 0 ? playlistId : null;
+      state.playlistSongs = state.selectedPlaylistId
+        ? await listPlaylistSongs(state.selectedPlaylistId)
+        : [];
+      state.error = null;
       render();
       return;
     }
@@ -1374,15 +1390,6 @@ async function bootstrap() {
       }
       state.playbackMode = nextMode;
       state.status = `Modo de reproducción: ${state.playbackMode}`;
-      render();
-    }
-
-    if (target.id === "playlist-selector") {
-      state.selectedPlaylistId = target.value ? Number(target.value) : null;
-      state.playlistSongs = state.selectedPlaylistId
-        ? await listPlaylistSongs(state.selectedPlaylistId)
-        : [];
-      state.error = null;
       render();
     }
 

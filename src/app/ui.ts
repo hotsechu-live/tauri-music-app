@@ -32,6 +32,32 @@ function formatPlaylistCreatedAt(value: string | null | undefined) {
   return `${year}-${month}-${day} ${String(hours).padStart(2, "0")} : ${minutes} ${period}`.replace(" : ", ":");
 }
 
+function formatPlaylistCreatedAtLong(value: string | null | undefined) {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  const months = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+  ];
+  return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
+}
+
 function formatPlaybackTime(seconds: number) {
   const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? Math.floor(seconds) : 0;
   const hours = Math.floor(safeSeconds / 3600);
@@ -97,6 +123,14 @@ export function renderApp(state: AppState, root: HTMLElement) {
   const filteredPlaylists = state.playlists.filter((playlist) => {
     if (state.playlistGroupFilter === null) return true;
     return (playlist.group?.trim() ?? "") === state.playlistGroupFilter;
+  });
+  const sessionListPlaylists = [...filteredPlaylists].sort((left, right) => {
+    const leftTime = new Date(left.created_at).getTime();
+    const rightTime = new Date(right.created_at).getTime();
+    if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime) && leftTime !== rightTime) {
+      return rightTime - leftTime;
+    }
+    return right.id - left.id;
   });
   const playbackDuration = Math.max(0, state.currentPlaybackDuration);
   const playbackTime = Math.min(Math.max(0, state.currentPlaybackTime), playbackDuration || Infinity);
@@ -293,33 +327,45 @@ export function renderApp(state: AppState, root: HTMLElement) {
       </section>
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
-        <section class="playlist-create-card">
-          <h2>Crear nueva lista de reproducción</h2>
-          <form id="create-playlist-form" class="playlist-create-form">
-            <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva lista de reproducción" title="Crear nueva lista de reproducción">+</button>
-            <input id="playlist-name" name="name" required placeholder="Nombre de la lista" aria-label="Nombre de la lista" />
-            <input name="description" placeholder="Descripción" aria-label="Descripción de la lista" />
-          </form>
-        </section>
-        <div class="playlist-toolbar">
-          <div class="playlist-selector">
-            <select id="playlist-group-selector" aria-label="Grupo de listas">
-              <option value="all" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
-              <option value="ungrouped" ${state.playlistGroupFilter === "" ? "selected" : ""}>Sin grupo</option>
-              ${playlistGroups.map((group) => `
-                <option value="group:${escapeHtml(group)}" ${group === state.playlistGroupFilter ? "selected" : ""}>${escapeHtml(group)}</option>
-              `).join("")}
-            </select>
+        ${currentPlaylist ? "" : `
+          <section class="playlist-create-card">
+            <h2>Crear nueva sesión</h2>
+            <form id="create-playlist-form" class="playlist-create-form">
+              <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva sesión" title="Crear nueva sesión">+</button>
+              <input id="playlist-name" name="name" required placeholder="Nombre de la sesión" aria-label="Nombre de la sesión" />
+              <input name="description" placeholder="Descripción" aria-label="Descripción de la sesión" />
+            </form>
+          </section>
+          <div class="playlist-toolbar">
+            <div class="playlist-selector">
+              <select id="playlist-group-selector" aria-label="Grupo de listas">
+                <option value="all" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
+                <option value="ungrouped" ${state.playlistGroupFilter === "" ? "selected" : ""}>Sin grupo</option>
+                ${playlistGroups.map((group) => `
+                  <option value="group:${escapeHtml(group)}" ${group === state.playlistGroupFilter ? "selected" : ""}>${escapeHtml(group)}</option>
+                `).join("")}
+              </select>
+            </div>
+            <div class="playlist-selector">
+              ${sessionListPlaylists.length === 0
+                ? "<p class=\"info-message\">No hay sesiones para mostrar con este filtro.</p>"
+                : `<ul class="playlist-session-list" aria-label="Sesiones disponibles">
+                    ${sessionListPlaylists
+                      .map(
+                        (playlist) => `
+                          <li class="${playlist.id === state.selectedPlaylistId ? "active" : ""}">
+                            <button type="button" class="playlist-session-name" data-action="select-playlist" data-id="${playlist.id}" aria-pressed="${playlist.id === state.selectedPlaylistId}">${escapeHtml(playlist.name)}</button>
+                            <span class="playlist-session-group">${escapeHtml(playlist.group?.trim() || "Sin grupo")}</span>
+                            <span class="playlist-session-description">${escapeHtml(playlist.description?.trim() || "—")}</span>
+                            <span class="playlist-session-date">${escapeHtml(formatPlaylistCreatedAtLong(playlist.created_at))}</span>
+                          </li>
+                        `,
+                      )
+                      .join("")}
+                  </ul>`}
+            </div>
           </div>
-          <div class="playlist-selector">
-            <select id="playlist-selector" aria-label="Lista seleccionada" ${filteredPlaylists.length === 0 ? "disabled" : ""}>
-              <option value="">Selecciona una lista de reproducción</option>
-              ${filteredPlaylists.map((playlist) => `
-                <option value="${playlist.id}" ${playlist.id === state.selectedPlaylistId ? "selected" : ""}>${escapeHtml(playlist.name)}${playlist.duration ? ` (${escapeHtml(playlist.duration)})` : ""}</option>
-              `).join("")}
-            </select>
-          </div>
-        </div>
+        `}
         ${state.playlists.length === 0 ? "<p>No hay listas todavía. Crea una lista para empezar.</p>" : ""}
         ${currentPlaylist ? `
           <div class="playlist-detail">
