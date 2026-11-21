@@ -91,6 +91,7 @@ export type AppState = {
   error: string | null;
   selectedPlaylistId: number | null;
   playlistGroupFilter: string | null;
+  sessionListPage: number;
   playlistSongs: Song[];
   selectedSongId: number | null;
   playbackQueue: Song[];
@@ -142,6 +143,7 @@ export const createInitialState = (): AppState => ({
   error: null,
   selectedPlaylistId: null,
   playlistGroupFilter: null,
+  sessionListPage: 0,
   playlistSongs: [],
   selectedSongId: null,
   playbackQueue: [],

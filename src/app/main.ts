@@ -531,10 +531,24 @@ async function bootstrap() {
     if (target.dataset.action === "navigate") {
       state.activeView = target.dataset.view as typeof state.activeView;
       if (target.dataset.view === "playlists") {
-        state.playlistGroupFilter = null;
         state.selectedPlaylistId = null;
         state.playlistSongs = [];
+        state.sessionListPage = 0;
       }
+      render();
+      return;
+    }
+
+    if (target.dataset.action === "session-page-prev") {
+      if (state.sessionListPage > 0) {
+        state.sessionListPage -= 1;
+        render();
+      }
+      return;
+    }
+
+    if (target.dataset.action === "session-page-next") {
+      state.sessionListPage += 1;
       render();
       return;
     }
@@ -1399,6 +1413,7 @@ async function bootstrap() {
         : target.value === "ungrouped"
           ? ""
           : target.value.slice("group:".length);
+      state.sessionListPage = 0;
       const selectedPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId);
       if (
         selectedPlaylist
@@ -1476,8 +1491,10 @@ async function bootstrap() {
       const name = String(data.get("name") ?? "").trim();
       const description = String(data.get("description") ?? "").trim() || null;
       if (!name) return;
+      // Si hay un grupo concreto seleccionado en el filtro, la nueva sesión se crea en ese grupo.
+      const group = state.playlistGroupFilter ? state.playlistGroupFilter : null;
       try {
-        state.selectedPlaylistId = await createPlaylist(name, description);
+        state.selectedPlaylistId = await createPlaylist(name, description, group);
         state.playlistSongs = [];
         state.status = `Lista creada: ${name}`;
         state.error = null;

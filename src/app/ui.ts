@@ -101,6 +101,8 @@ export function updatePlaybackProgress(state: AppState, root: HTMLElement) {
   }
 }
 
+const SESSION_PAGE_SIZE = 15;
+
 export function renderApp(state: AppState, root: HTMLElement) {
   const collectionSongs = state.selectedCollectionIds.length === 0
     ? state.songs
@@ -132,6 +134,12 @@ export function renderApp(state: AppState, root: HTMLElement) {
     }
     return right.id - left.id;
   });
+  const sessionTotalPages = Math.max(1, Math.ceil(sessionListPlaylists.length / SESSION_PAGE_SIZE));
+  const sessionPage = Math.max(0, Math.min(state.sessionListPage, sessionTotalPages - 1));
+  const sessionPagePlaylists = sessionListPlaylists.slice(
+    sessionPage * SESSION_PAGE_SIZE,
+    (sessionPage + 1) * SESSION_PAGE_SIZE,
+  );
   const playbackDuration = Math.max(0, state.currentPlaybackDuration);
   const playbackTime = Math.min(Math.max(0, state.currentPlaybackTime), playbackDuration || Infinity);
   const playbackProgress = playbackDuration > 0 ? (playbackTime / playbackDuration) * 100 : 0;
@@ -350,7 +358,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
               ${sessionListPlaylists.length === 0
                 ? "<p class=\"info-message\">No hay sesiones para mostrar con este filtro.</p>"
                 : `<ul class="playlist-session-list" aria-label="Sesiones disponibles">
-                    ${sessionListPlaylists
+                    ${sessionPagePlaylists
                       .map(
                         (playlist) => `
                           <li class="${playlist.id === state.selectedPlaylistId ? "active" : ""}">
@@ -362,7 +370,14 @@ export function renderApp(state: AppState, root: HTMLElement) {
                         `,
                       )
                       .join("")}
-                  </ul>`}
+                  </ul>
+                  ${sessionTotalPages > 1 ? `
+                    <div class="playlist-session-pagination">
+                      <button type="button" data-action="session-page-prev" ${sessionPage === 0 ? "disabled" : ""} aria-label="Página anterior" title="Página anterior">&#9664; Anterior</button>
+                      <span>Página ${sessionPage + 1} de ${sessionTotalPages}</span>
+                      <button type="button" data-action="session-page-next" ${sessionPage >= sessionTotalPages - 1 ? "disabled" : ""} aria-label="Página siguiente" title="Página siguiente">Siguiente &#9654;</button>
+                    </div>
+                  ` : ""}`}
             </div>
           </div>
         `}
