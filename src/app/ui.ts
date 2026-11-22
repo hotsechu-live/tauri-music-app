@@ -251,8 +251,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
       <section class="panel songs-panel ${state.activeView === "songs" ? "" : "hidden"}">
         <div class="filter-row songs-filter-row">
           <div class="search-input-row">
+            <button id="search-submit" class="search-button" type="button" aria-label="Buscar">🔍</button>
             <input id="song-search" type="search" value="${escapeHtml(state.pendingSearchQuery)}" placeholder="Buscar canciones" />
-            <button id="search-submit" class="search-button" aria-label="Buscar">🔍</button>
           </div>
           <select id="search-field" aria-label="Filtrar por campo">
             <option value="">Buscar en todos los campos</option>
@@ -272,13 +272,13 @@ export function renderApp(state: AppState, root: HTMLElement) {
           <details class="collection-filter" ${state.collectionFilterOpen ? "open" : ""}>
             <summary aria-label="Filtrar por colecciones">
               ${state.selectedCollectionIds.length === 0
-                ? "Todas las colecciones"
+                ? "Mostrar todas las colecciones"
                 : `${state.selectedCollectionIds.length} ${state.selectedCollectionIds.length === 1 ? "colección" : "colecciones"}`}
             </summary>
             <div class="collection-filter-options">
               <label>
                 <input id="all-collections-filter" type="checkbox" ${state.selectedCollectionIds.length === 0 ? "checked" : ""} />
-                Todas las colecciones
+                Mostrar todas las colecciones
               </label>
               ${[...state.collections]
                 .sort((left, right) => left.name.localeCompare(right.name, "es", { sensitivity: "base" }))
@@ -293,10 +293,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 .join("")}
             </div>
           </details>
-        </div>
-        <div class="action-row">
-          <button id="play-filtered-btn">Reproducir filtradas</button>
-          <span class="info-message">${filteredSongs.length} canciones visibles</span>
+          <button id="play-filtered-btn" type="button">Reproducir filtradas</button>
+          <span class="info-message songs-visible-count">${filteredSongs.length} canciones visibles</span>
         </div>
         ${filteredSongs.length === 0 ? "<p>No hay canciones visibles con los filtros actuales.</p>" : `<table>
           <thead>
@@ -336,23 +334,25 @@ export function renderApp(state: AppState, root: HTMLElement) {
 
       <section class="panel ${state.activeView === "playlists" ? "" : "hidden"}">
         ${currentPlaylist ? "" : `
-          <section class="playlist-create-card">
-            <h2>Crear nueva sesión</h2>
-            <form id="create-playlist-form" class="playlist-create-form">
-              <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva sesión" title="Crear nueva sesión">+</button>
-              <input id="playlist-name" name="name" required placeholder="Nombre de la sesión" aria-label="Nombre de la sesión" />
-              <input name="description" placeholder="Descripción" aria-label="Descripción de la sesión" />
-            </form>
-          </section>
           <div class="playlist-toolbar">
-            <div class="playlist-selector">
-              <select id="playlist-group-selector" aria-label="Grupo de listas">
-                <option value="all" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
-                <option value="ungrouped" ${state.playlistGroupFilter === "" ? "selected" : ""}>Sin grupo</option>
-                ${playlistGroups.map((group) => `
-                  <option value="group:${escapeHtml(group)}" ${group === state.playlistGroupFilter ? "selected" : ""}>${escapeHtml(group)}</option>
-                `).join("")}
-              </select>
+            <div class="playlist-toolbar-row">
+              <div class="playlist-selector">
+                <select id="playlist-group-selector" aria-label="Grupo de listas">
+                  <option value="all" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
+                  <option value="ungrouped" ${state.playlistGroupFilter === "" ? "selected" : ""}>Sin grupo</option>
+                  ${playlistGroups.map((group) => `
+                    <option value="group:${escapeHtml(group)}" ${group === state.playlistGroupFilter ? "selected" : ""}>${escapeHtml(group)}</option>
+                  `).join("")}
+                </select>
+              </div>
+              <div class="playlist-create-card">
+                <h2>Crear nueva sesión</h2>
+                <form id="create-playlist-form" class="playlist-create-form">
+                  <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva sesión" title="Crear nueva sesión">+</button>
+                  <input id="playlist-name" name="name" required placeholder="Nombre de la sesión" aria-label="Nombre de la sesión" />
+                  <input name="description" placeholder="Descripción" aria-label="Descripción de la sesión" />
+                </form>
+              </div>
             </div>
             <div class="playlist-selector">
               ${sessionListPlaylists.length === 0

@@ -127,7 +127,6 @@ button {
 }
 
 .filter-row,
-.action-row,
 .inline-actions,
 .metadata-editor {
   display: flex;
@@ -316,6 +315,19 @@ button {
 .songs-filter-row select {
   flex: 1 1 0;
   min-width: 0;
+}
+
+.songs-filter-row #play-filtered-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.songs-filter-row .songs-visible-count {
+  flex: 0 0 auto;
+  min-height: 0;
+  margin: 0;
+  white-space: nowrap;
+  font-size: 0.9rem;
 }
 
 .collection-filter {
@@ -508,12 +520,21 @@ button {
   border-bottom: 1px solid #e5e7eb;
 }
 
+.playlist-toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
 .playlist-create-card {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-bottom: 1rem;
-  padding: 1rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem 1rem;
   border-radius: 12px;
   background: #f9fafb;
   border: 1px solid #e5e7eb;
@@ -711,6 +732,11 @@ button {
 }
 
 @media (max-width: 760px) {
+  .playlist-toolbar-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .playlist-create-card {
     align-items: stretch;
     flex-direction: column;

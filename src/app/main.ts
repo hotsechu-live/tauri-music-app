@@ -22,6 +22,7 @@ async function bootstrap() {
   let playbackVolumeBeforeMute = 1;
   let playbackEndMark: number | null = null;
   let updatingMarkedPlayback = false;
+  let searchDebounceTimer: ReturnType<typeof setTimeout> | undefined;
 
   const playbackFade = () => playbackEndMark === null
     ? 1
@@ -84,7 +85,29 @@ async function bootstrap() {
   };
 
   const render = () => {
+    const active = typeof document !== "undefined"
+      ? document.activeElement as HTMLElement | null
+      : null;
+    const activeId = active?.id ?? "";
+    const isTextEntry = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+    const caretStart = isTextEntry ? active.selectionStart : null;
+    const caretEnd = isTextEntry ? active.selectionEnd : null;
+
     renderApp(state, root);
+
+    // Restaura el foco y la posición del cursor tras repintar el DOM,
+    // para que la búsqueda en vivo no interrumpa la escritura.
+    if (activeId) {
+      const restored = root.querySelector<HTMLElement>(`#${CSS.escape(activeId)}`);
+      if (restored) {
+        restored.focus();
+        const restoredIsTextEntry = restored instanceof HTMLInputElement
+          || restored instanceof HTMLTextAreaElement;
+        if (restoredIsTextEntry && restored.type !== "range" && caretStart !== null && caretEnd !== null) {
+          restored.setSelectionRange(caretStart, caretEnd);
+        }
+      }
+    }
   };
 
   const playlistEditorHasUnsavedChanges = () => {
@@ -1317,9 +1340,21 @@ async function bootstrap() {
 
     if (target.id === "song-search") {
       state.pendingSearchQuery = target.value;
-      if (!target.value) {
-        state.searchQuery = "";
-        render();
+      const query = target.value.trim();
+      clearTimeout(searchDebounceTimer);
+      if (query.length < 3) {
+        // Con menos de 3 caracteres se restaura la lista completa.
+        if (state.searchQuery) {
+          state.searchQuery = "";
+          render();
+        }
+      } else {
+        // Búsqueda en vivo: se lanza al llegar a 3 caracteres y se
+        // actualiza (con debounce) mientras se sigue escribiendo.
+        searchDebounceTimer = setTimeout(() => {
+          state.searchQuery = state.pendingSearchQuery;
+          render();
+        }, 300);
       }
     }
 
