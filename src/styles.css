@@ -167,12 +167,12 @@ button {
 }
 
 .player-song {
-  flex: 2 1 12rem;
+  flex: 1 1 9rem;
   font-weight: 600;
 }
 
 .player-playlist {
-  flex: 1 1 8rem;
+  flex: 2 1 12rem;
   color: #6b7280;
 }
 

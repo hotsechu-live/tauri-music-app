@@ -113,9 +113,15 @@ export function renderApp(state: AppState, root: HTMLElement) {
   )].sort((left, right) => left.localeCompare(right, "es"));
 
   const currentSong = state.playbackQueue[state.playbackIndex] ?? null;
-  const currentSongText = currentSong
-    ? [currentSong.title.trim(), currentSong.artist.trim()].filter(Boolean).join(" - ")
-    : "";
+  const currentCollectionText = () => {
+    if (!currentSong) {
+      return "";
+    }
+    const album = currentSong.album.trim();
+    return album
+      ? `${currentSong.collection_name.trim()} - ${album}`
+      : currentSong.collection_name.trim();
+  };
   const currentPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId) ?? null;
   const playlistGroups = Array.from(new Set(
     state.playlists
@@ -160,11 +166,11 @@ export function renderApp(state: AppState, root: HTMLElement) {
       </nav>
 
       <section class="panel player-bar" aria-label="Reproductor">
-        <div class="player-song" title="${currentSong ? escapeHtml(currentSongText) : "Sin canción seleccionada"}">
-          ${currentSong ? escapeHtml(currentSongText) : "Sin canción"}
+        <div class="player-song" title="${currentSong ? escapeHtml([currentSong.title.trim(), currentSong.artist.trim()].filter(Boolean).join(" - ")) : "Sin canción seleccionada"}">
+          ${currentSong ? escapeHtml([currentSong.title.trim(), currentSong.artist.trim()].filter(Boolean).join(" - ")) : "Sin canción"}
         </div>
-        <div class="player-playlist" title="${currentSong ? escapeHtml(currentSong.collection_name) : "Sin colección"}">
-          ${currentSong ? escapeHtml(currentSong.collection_name) : "Sin colección"}
+        <div class="player-playlist" title="${currentSong ? escapeHtml(currentCollectionText()) : "Sin colección"}">
+          ${currentSong ? escapeHtml(currentCollectionText()) : "Sin colección"}
         </div>
         <div class="player-controls">
           <button class="player-button" data-action="playback-prev" aria-label="Canción anterior" title="Canción anterior">&#10072;&#9664;</button>
