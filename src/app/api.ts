@@ -63,20 +63,24 @@ export async function updatePlaylist(
   name: string,
   description: string | null = null,
   group: string | null = null,
+  location: string | null = null,
   descriptionExtended: string | null = null,
   purpose: string | null = null,
   tags: string | null = null,
   comment: string | null = null,
+  executionDate: string | null = null,
 ) {
   return invoke<string>("update_playlist", {
     playlistId,
     name,
     description,
     group,
+    location,
     descriptionExtended,
     purpose,
     tags,
     comment,
+    executionDate,
   });
 }
 

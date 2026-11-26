@@ -8,6 +8,7 @@ interface ExportedPlaylist {
     name: string;
     description: string | null;
     group: string | null;
+    location: string | null;
     description_extended: string | null;
     purpose: string | null;
     tags: string | null;
@@ -84,6 +85,7 @@ export function playlistExportBytes(playlist: Playlist, songs: Song[]): string {
       name: playlist.name,
       description: playlist.description,
       group: playlist.group,
+      location: playlist.location,
       description_extended: playlist.description_extended,
       purpose: playlist.purpose,
       tags: playlist.tags,

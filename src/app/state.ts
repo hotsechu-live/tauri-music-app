@@ -29,11 +29,13 @@ export type Playlist = {
   name: string;
   description: string | null;
   group: string | null;
+  location: string | null;
   description_extended: string | null;
   purpose: string | null;
   tags: string | null;
   comment: string | null;
   created_at: string;
+  execution_date: string | null;
   duration: string;
 };
 
@@ -91,6 +93,7 @@ export type AppState = {
   error: string | null;
   selectedPlaylistId: number | null;
   playlistGroupFilter: string | null;
+  playlistLocationFilter: string | null;
   sessionListPage: number;
   playlistSongs: Song[];
   selectedSongId: number | null;
@@ -105,11 +108,12 @@ export type AppState = {
   playlistEditorName: string;
   playlistEditorDescription: string | null;
   playlistEditorGroup: string | null;
+  playlistEditorLocation: string | null;
   playlistEditorDescriptionExtended: string | null;
   playlistEditorPurpose: string | null;
   playlistEditorTags: string | null;
   playlistEditorComment: string | null;
-  playlistEditorCreatedAt: string | null;
+  playlistEditorExecutionDate: string | null;
   playlistEditorDuration: string | null;
   playlistEditorMaximized: boolean;
   currentPlaybackTime: number;
@@ -143,6 +147,7 @@ export const createInitialState = (): AppState => ({
   error: null,
   selectedPlaylistId: null,
   playlistGroupFilter: null,
+  playlistLocationFilter: null,
   sessionListPage: 0,
   playlistSongs: [],
   selectedSongId: null,
@@ -154,11 +159,12 @@ export const createInitialState = (): AppState => ({
   playlistEditorName: "",
   playlistEditorDescription: null,
   playlistEditorGroup: null,
+  playlistEditorLocation: null,
   playlistEditorDescriptionExtended: null,
   playlistEditorPurpose: null,
   playlistEditorTags: null,
   playlistEditorComment: null,
-  playlistEditorCreatedAt: null,
+  playlistEditorExecutionDate: null,
   playlistEditorDuration: null,
   playlistEditorMaximized: false,
   playbackMode: "manual",

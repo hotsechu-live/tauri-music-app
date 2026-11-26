@@ -59,9 +59,13 @@ async function bootstrap() {
       state.songs = songs;
       state.collections = collections;
       state.playlists = playlists;
-      if (state.playlistGroupFilter !== null) {
-        const selectedPlaylist = playlists.find((playlist) => playlist.id === state.selectedPlaylistId);
-        if (selectedPlaylist && (selectedPlaylist.group?.trim() ?? "") !== state.playlistGroupFilter) {
+      const selectedPlaylist = playlists.find((playlist) => playlist.id === state.selectedPlaylistId);
+      if (selectedPlaylist) {
+        const matchesGroupFilter = state.playlistGroupFilter === null
+          || (selectedPlaylist.group?.trim() ?? "") === state.playlistGroupFilter;
+        const matchesLocationFilter = state.playlistLocationFilter === null
+          || (selectedPlaylist.location?.trim() ?? "") === state.playlistLocationFilter;
+        if (!matchesGroupFilter || !matchesLocationFilter) {
           state.selectedPlaylistId = null;
           state.playlistSongs = [];
         }
@@ -121,10 +125,12 @@ async function bootstrap() {
       String(data.get("name") ?? "") !== state.playlistEditorName ||
       String(data.get("description") ?? "") !== (state.playlistEditorDescription ?? "") ||
       String(data.get("group") ?? "") !== (state.playlistEditorGroup ?? "") ||
+      String(data.get("location") ?? "") !== (state.playlistEditorLocation ?? "") ||
       String(data.get("descriptionExtended") ?? "") !== (state.playlistEditorDescriptionExtended ?? "") ||
       String(data.get("purpose") ?? "") !== (state.playlistEditorPurpose ?? "") ||
       String(data.get("tags") ?? "") !== (state.playlistEditorTags ?? "") ||
-      String(data.get("comment") ?? "") !== (state.playlistEditorComment ?? "")
+      String(data.get("comment") ?? "") !== (state.playlistEditorComment ?? "") ||
+      String(data.get("executionDate") ?? "") !== (state.playlistEditorExecutionDate ?? "")
     );
   };
 
@@ -149,11 +155,12 @@ async function bootstrap() {
     state.playlistEditorName = "";
     state.playlistEditorDescription = null;
     state.playlistEditorGroup = null;
+    state.playlistEditorLocation = null;
     state.playlistEditorDescriptionExtended = null;
     state.playlistEditorPurpose = null;
     state.playlistEditorTags = null;
     state.playlistEditorComment = null;
-    state.playlistEditorCreatedAt = null;
+    state.playlistEditorExecutionDate = null;
     state.playlistEditorDuration = null;
     state.playlistEditorMaximized = false;
     render();
@@ -953,11 +960,12 @@ async function bootstrap() {
       state.playlistEditorName = playlist.name;
       state.playlistEditorDescription = playlist.description;
       state.playlistEditorGroup = playlist.group;
+      state.playlistEditorLocation = playlist.location;
       state.playlistEditorDescriptionExtended = playlist.description_extended;
       state.playlistEditorPurpose = playlist.purpose;
       state.playlistEditorTags = playlist.tags;
       state.playlistEditorComment = playlist.comment;
-      state.playlistEditorCreatedAt = playlist.created_at;
+      state.playlistEditorExecutionDate = playlist.execution_date ?? null;
       state.playlistEditorDuration = playlist.duration;
       state.playlistEditorMaximized = false;
       render();
@@ -1461,6 +1469,26 @@ async function bootstrap() {
       state.error = null;
       render();
     }
+
+    if (target.id === "playlist-location-selector") {
+      state.playlistLocationFilter = target.value === "all"
+        ? null
+        : target.value === "unlocated"
+          ? ""
+          : target.value.slice("location:".length);
+      state.sessionListPage = 0;
+      const selectedPlaylist = state.playlists.find((playlist) => playlist.id === state.selectedPlaylistId);
+      if (
+        selectedPlaylist
+        && state.playlistLocationFilter !== null
+        && (selectedPlaylist.location?.trim() ?? "") !== state.playlistLocationFilter
+      ) {
+        state.selectedPlaylistId = null;
+        state.playlistSongs = [];
+      }
+      state.error = null;
+      render();
+    }
   });
 
   root.addEventListener("submit", async (event) => {
@@ -1567,13 +1595,15 @@ async function bootstrap() {
       const name = String(data.get("name") ?? "").trim();
       const description = String(data.get("description") ?? "").trim() || null;
       const group = String(data.get("group") ?? "").trim() || null;
+      const location = String(data.get("location") ?? "").trim() || null;
       const descriptionExtended = String(data.get("descriptionExtended") ?? "").trim() || null;
       const purpose = String(data.get("purpose") ?? "").trim() || null;
       const tags = String(data.get("tags") ?? "").trim() || null;
       const comment = String(data.get("comment") ?? "").trim() || null;
+      const executionDate = String(data.get("executionDate") ?? "").trim() || null;
       if (!name) return;
       try {
-        await updatePlaylist(playlistId, name, description, group, descriptionExtended, purpose, tags, comment);
+        await updatePlaylist(playlistId, name, description, group, location, descriptionExtended, purpose, tags, comment, executionDate);
         state.error = null;
         await refreshData();
       } catch (error) {

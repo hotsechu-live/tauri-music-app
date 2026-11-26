@@ -557,13 +557,20 @@ button {
 
 .playlist-create-button {
   white-space: nowrap;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .playlist-selector {
   display: grid;
   gap: 0.35rem;
   font-weight: 600;
-  min-width: 15rem;
+  min-width: 10rem;
 }
 
 .playlist-toolbar > .playlist-selector:last-child {

@@ -10,35 +10,26 @@ function escapeHtml(value: string | null | undefined) {
     .replace(/'/g, "&#39;");
 }
 
-function formatPlaylistCreatedAt(value: string | null | undefined) {
+function executionDateInputValue(value: string | null | undefined) {
   if (!value) {
     return "";
   }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value;
   }
-
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
-  let hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const period = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-  if (hours === 0) {
-    hours = 12;
-  }
-  return `${year}-${month}-${day} ${String(hours).padStart(2, "0")} : ${minutes} ${period}`.replace(" : ", ":");
+  return `${year}-${month}-${day}`;
 }
 
-function formatPlaylistCreatedAtLong(value: string | null | undefined) {
+function formatSessionDateLong(value: string | null | undefined) {
   if (!value) {
     return "";
-  }
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
   }
 
   const months = [
@@ -55,6 +46,23 @@ function formatPlaylistCreatedAtLong(value: string | null | undefined) {
     "noviembre",
     "diciembre",
   ];
+
+  // Las fechas de solo día (AAAA-MM-DD) se interpretan en hora local para
+  // no adelantar/atrasar un día por la zona horaria.
+  const dateOnly = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (dateOnly) {
+    const year = Number(dateOnly[1]);
+    const monthIndex = Number(dateOnly[2]) - 1;
+    const day = Number(dateOnly[3]);
+    if (monthIndex >= 0 && monthIndex < 12) {
+      return `${day} de ${months[monthIndex]} de ${year}`;
+    }
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
   return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
 }
 
@@ -128,15 +136,23 @@ export function renderApp(state: AppState, root: HTMLElement) {
       .map((playlist) => playlist.group?.trim() ?? "")
       .filter(Boolean),
   )).sort((left, right) => left.localeCompare(right, "es"));
+  const playlistLocations = Array.from(new Set(
+    state.playlists
+      .map((playlist) => playlist.location?.trim() ?? "")
+      .filter(Boolean),
+  )).sort((left, right) => left.localeCompare(right, "es"));
   const filteredPlaylists = state.playlists.filter((playlist) => {
-    if (state.playlistGroupFilter === null) return true;
-    return (playlist.group?.trim() ?? "") === state.playlistGroupFilter;
+    if (state.playlistGroupFilter !== null && (playlist.group?.trim() ?? "") !== state.playlistGroupFilter) return false;
+    if (state.playlistLocationFilter !== null && (playlist.location?.trim() ?? "") !== state.playlistLocationFilter) return false;
+    return true;
   });
+  // Orden descendente por fecha de ejecución (cadenas ISO comparables como texto);
+  // si falta, se usa la fecha de creación, igual que en la columna mostrada.
   const sessionListPlaylists = [...filteredPlaylists].sort((left, right) => {
-    const leftTime = new Date(left.created_at).getTime();
-    const rightTime = new Date(right.created_at).getTime();
-    if (!Number.isNaN(leftTime) && !Number.isNaN(rightTime) && leftTime !== rightTime) {
-      return rightTime - leftTime;
+    const leftDate = left.execution_date ?? left.created_at ?? "";
+    const rightDate = right.execution_date ?? right.created_at ?? "";
+    if (leftDate !== rightDate) {
+      return leftDate < rightDate ? 1 : -1;
     }
     return right.id - left.id;
   });
@@ -344,10 +360,19 @@ export function renderApp(state: AppState, root: HTMLElement) {
             <div class="playlist-toolbar-row">
               <div class="playlist-selector">
                 <select id="playlist-group-selector" aria-label="Grupo de listas">
-                  <option value="all" ${state.playlistGroupFilter === null ? "selected" : ""}>Selecciona un grupo de listas</option>
+                  <option value="all" ${state.playlistGroupFilter === null ? "selected" : ""}>Grupo</option>
                   <option value="ungrouped" ${state.playlistGroupFilter === "" ? "selected" : ""}>Sin grupo</option>
                   ${playlistGroups.map((group) => `
                     <option value="group:${escapeHtml(group)}" ${group === state.playlistGroupFilter ? "selected" : ""}>${escapeHtml(group)}</option>
+                  `).join("")}
+                </select>
+              </div>
+              <div class="playlist-selector">
+                <select id="playlist-location-selector" aria-label="Lugar de las sesiones">
+                  <option value="all" ${state.playlistLocationFilter === null ? "selected" : ""}>Lugar</option>
+                  <option value="unlocated" ${state.playlistLocationFilter === "" ? "selected" : ""}>Sin lugar</option>
+                  ${playlistLocations.map((location) => `
+                    <option value="location:${escapeHtml(location)}" ${location === state.playlistLocationFilter ? "selected" : ""}>${escapeHtml(location)}</option>
                   `).join("")}
                 </select>
               </div>
@@ -355,7 +380,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                 <h2>Crear nueva sesión</h2>
                 <form id="create-playlist-form" class="playlist-create-form">
                   <button type="submit" class="icon-button playlist-create-button" aria-label="Crear nueva sesión" title="Crear nueva sesión">+</button>
-                  <input id="playlist-name" name="name" required placeholder="Nombre de la sesión" aria-label="Nombre de la sesión" />
+                  <input id="playlist-name" name="name" required placeholder="Nombre" aria-label="Nombre de la sesión" />
                   <input name="description" placeholder="Descripción" aria-label="Descripción de la sesión" />
                 </form>
               </div>
@@ -371,7 +396,7 @@ export function renderApp(state: AppState, root: HTMLElement) {
                             <button type="button" class="playlist-session-name" data-action="select-playlist" data-id="${playlist.id}" aria-pressed="${playlist.id === state.selectedPlaylistId}">${escapeHtml(playlist.name)}</button>
                             <span class="playlist-session-group">${escapeHtml(playlist.group?.trim() || "Sin grupo")}</span>
                             <span class="playlist-session-description">${escapeHtml(playlist.description?.trim() || "—")}</span>
-                            <span class="playlist-session-date">${escapeHtml(formatPlaylistCreatedAtLong(playlist.created_at))}</span>
+                            <span class="playlist-session-date">${escapeHtml(formatSessionDateLong(playlist.execution_date ?? playlist.created_at))}</span>
                           </li>
                         `,
                       )
@@ -630,6 +655,10 @@ export function renderApp(state: AppState, root: HTMLElement) {
               <input name="group" value="${escapeHtml(state.playlistEditorGroup)}" />
             </label>
             <label>
+              Lugar
+              <input name="location" value="${escapeHtml(state.playlistEditorLocation ?? "")}" />
+            </label>
+            <label>
               Descripción extendida
               <textarea name="descriptionExtended">${escapeHtml(state.playlistEditorDescriptionExtended ?? "")}</textarea>
             </label>
@@ -648,8 +677,8 @@ export function renderApp(state: AppState, root: HTMLElement) {
             </label>
             <div class="modal-readonly-row">
               <label>
-                Fecha de creación
-                <input value="${escapeHtml(formatPlaylistCreatedAt(state.playlistEditorCreatedAt))}" disabled />
+                Fecha de ejecución
+                <input type="date" name="executionDate" value="${escapeHtml(executionDateInputValue(state.playlistEditorExecutionDate))}" />
               </label>
               <label>
                 Duración

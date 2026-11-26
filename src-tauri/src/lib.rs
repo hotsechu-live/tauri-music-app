@@ -230,11 +230,13 @@ struct PlaylistRecord {
     name: String,
     description: Option<String>,
     group: Option<String>,
+    location: Option<String>,
     description_extended: Option<String>,
     purpose: Option<String>,
     tags: Option<String>,
     comment: Option<String>,
     created_at: String,
+    execution_date: Option<String>,
     duration: String,
 }
 
@@ -336,11 +338,13 @@ fn init_schema(conn: &Connection) -> Result<()> {
             name TEXT NOT NULL UNIQUE,
             description TEXT,
             "group" TEXT,
+            location TEXT,
             description_extended TEXT,
             purpose TEXT,
             tags TEXT,
             comment TEXT,
-            created_at TEXT NOT NULL
+            created_at TEXT NOT NULL,
+            execution_date TEXT
         );
 
         CREATE TABLE IF NOT EXISTS playlist_songs (
@@ -416,6 +420,9 @@ fn ensure_playlist_columns(conn: &Connection) -> Result<()> {
     if !columns.contains(&"group".to_string()) {
         conn.execute("ALTER TABLE playlists ADD COLUMN \"group\" TEXT", [])?;
     }
+    if !columns.contains(&"location".to_string()) {
+        conn.execute("ALTER TABLE playlists ADD COLUMN location TEXT", [])?;
+    }
     if !columns.contains(&"purpose".to_string()) {
         conn.execute("ALTER TABLE playlists ADD COLUMN purpose TEXT", [])?;
     }
@@ -424,6 +431,14 @@ fn ensure_playlist_columns(conn: &Connection) -> Result<()> {
     }
     if !columns.contains(&"comment".to_string()) {
         conn.execute("ALTER TABLE playlists ADD COLUMN comment TEXT", [])?;
+    }
+    if !columns.contains(&"execution_date".to_string()) {
+        conn.execute("ALTER TABLE playlists ADD COLUMN execution_date TEXT", [])?;
+        // Las sesiones existentes heredan como fecha de ejecución el día de su fecha de creación.
+        conn.execute(
+            "UPDATE playlists SET execution_date = substr(created_at, 1, 10) WHERE execution_date IS NULL",
+            [],
+        )?;
     }
 
     Ok(())
@@ -518,6 +533,8 @@ struct ExportedPlaylistData {
     name: String,
     description: Option<String>,
     group: Option<String>,
+    #[serde(default)]
+    location: Option<String>,
     description_extended: Option<String>,
     purpose: Option<String>,
     tags: Option<String>,
@@ -726,23 +743,28 @@ fn import_playlist(
     let mut warnings = Vec::new();
 
     // Crear la nueva playlist
-    let created_at = Utc::now().to_rfc3339();
+    let now = Utc::now();
+    let created_at = now.to_rfc3339();
+    // La fecha de ejecución solo guarda día, mes y año; al crear la sesión coincide con la de creación.
+    let execution_date = now.format("%Y-%m-%d").to_string();
     let group = target_group.or(playlist_data.group);
 
     // Generar un nombre único para la playlist (evitar conflictos con nombres existentes)
     let playlist_name = generate_unique_playlist_name(&conn, &playlist_data.name)?;
 
     conn.execute(
-        "INSERT INTO playlists (name, description, \"group\", description_extended, purpose, tags, comment, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        "INSERT INTO playlists (name, description, \"group\", location, description_extended, purpose, tags, comment, created_at, execution_date) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         params![
             playlist_name,
             playlist_data.description,
             group,
+            playlist_data.location,
             playlist_data.description_extended,
             playlist_data.purpose,
             playlist_data.tags,
             playlist_data.comment,
-            created_at
+            created_at,
+            execution_date
         ],
     )
     .map_err(|e| e.to_string())?;
@@ -1208,10 +1230,13 @@ fn delete_collection(collection_id: i64) -> Result<String, String> {
 fn create_playlist(name: String, description: Option<String>, group: Option<String>) -> Result<i64, String> {
     let conn = open_connection().map_err(|e| e.to_string())?;
     init_schema(&conn).map_err(|e| e.to_string())?;
-    let created_at = Utc::now().to_rfc3339();
+    let now = Utc::now();
+    let created_at = now.to_rfc3339();
+    // La fecha de ejecución solo guarda día, mes y año; al crear la sesión coincide con la de creación.
+    let execution_date = now.format("%Y-%m-%d").to_string();
     conn.execute(
-        "INSERT INTO playlists (name, description, \"group\", created_at) VALUES (?1, ?2, ?3, ?4)",
-        params![name, description, group, created_at],
+        "INSERT INTO playlists (name, description, \"group\", created_at, execution_date) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![name, description, group, created_at, execution_date],
     )
     .map_err(|e| e.to_string())?;
     Ok(conn.last_insert_rowid())
@@ -1223,15 +1248,26 @@ fn update_playlist(
     name: String,
     description: Option<String>,
     group: Option<String>,
+    location: Option<String>,
     description_extended: Option<String>,
     purpose: Option<String>,
     tags: Option<String>,
     comment: Option<String>,
+    execution_date: Option<String>,
 ) -> Result<String, String> {
+    let execution_date = match execution_date.as_deref().map(str::trim) {
+        None | Some("") => None,
+        Some(value) => {
+            // La fecha de ejecución solo admite día, mes y año (AAAA-MM-DD).
+            chrono::NaiveDate::parse_from_str(value, "%Y-%m-%d")
+                .map_err(|_| "La fecha de ejecución debe tener el formato AAAA-MM-DD".to_string())?;
+            Some(value.to_string())
+        }
+    };
     let conn = open_connection().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE playlists SET name = ?1, description = ?2, \"group\" = ?3, description_extended = ?4, purpose = ?5, tags = ?6, comment = ?7 WHERE id = ?8",
-        params![name, description, group, description_extended, purpose, tags, comment, playlist_id],
+        "UPDATE playlists SET name = ?1, description = ?2, \"group\" = ?3, location = ?4, description_extended = ?5, purpose = ?6, tags = ?7, comment = ?8, execution_date = ?9 WHERE id = ?10",
+        params![name, description, group, location, description_extended, purpose, tags, comment, execution_date, playlist_id],
     )
     .map_err(|e| e.to_string())?;
     Ok("ok".to_string())
@@ -1427,11 +1463,13 @@ fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
                     p.name,
                     p.description,
                     p.\"group\",
+                    p.location,
                     p.description_extended,
                     p.purpose,
                     p.tags,
                     p.comment,
                     p.created_at,
+                    p.execution_date,
                     printf('%02d:%02d:%02d',
                         COALESCE(SUM(COALESCE(s.duration_seconds, 0)), 0) / 3600,
                         (COALESCE(SUM(COALESCE(s.duration_seconds, 0)), 0) / 60) % 60,
@@ -1451,12 +1489,14 @@ fn list_playlists() -> Result<Vec<PlaylistRecord>, String> {
                 name: row.get(1)?,
                 description: row.get(2)?,
                 group: row.get(3)?,
-                description_extended: row.get(4)?,
-                purpose: row.get(5)?,
-                tags: row.get(6)?,
-                comment: row.get(7)?,
-                created_at: row.get(8)?,
-                duration: row.get(9)?,
+                location: row.get(4)?,
+                description_extended: row.get(5)?,
+                purpose: row.get(6)?,
+                tags: row.get(7)?,
+                comment: row.get(8)?,
+                created_at: row.get(9)?,
+                execution_date: row.get(10)?,
+                duration: row.get(11)?,
             })
         })
         .map_err(|e| e.to_string())?;
