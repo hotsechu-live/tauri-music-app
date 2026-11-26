@@ -247,12 +247,13 @@ export function renderApp(state: AppState, root: HTMLElement) {
       <section class="panel metadata-panel ${state.activeView === "metadata" ? "" : "hidden"}">
         ${state.status.startsWith("Metadato ") ? `<p class="info-message">${escapeHtml(state.status)}</p>` : ""}
         ${state.error ? `<p class="error">${escapeHtml(state.error)}</p>` : ""}
-        <section class="metadata-card">
-          <p class="metadata-create-help">Los metadatos personalizados que se creen podrán gestionarse en la ventana de canciones, cuando se acceda a la ventana de modificación de la canción.</p>
+        <section class="metadata-card metadata-create-card">
+          <h2>Crear nuevo metadato</h2>
           <form id="create-metadata-definition-form" class="metadata-create-form">
-            <button type="submit" class="icon-button metadata-create-button">Crear nuevo metadato</button>
+            <button type="submit" class="icon-button metadata-create-button" aria-label="Crear nuevo metadato" title="Crear nuevo metadato">+</button>
             <input name="key" required placeholder="Nombre del metadato" aria-label="Nombre del metadato" />
           </form>
+          <p class="metadata-create-help">Los metadatos personalizados que se creen podrán gestionarse en la ventana de canciones, cuando se acceda a la ventana de modificación de la canción.</p>
         </section>
         <section class="metadata-card">
           <h2>Metadatos personalizados</h2>

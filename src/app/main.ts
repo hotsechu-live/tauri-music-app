@@ -605,9 +605,9 @@ async function bootstrap() {
           const aboutWindow = new WebviewWindow("about", {
             url: "about.html",
             title: "Acerca de Tauri Music App",
-            width: 440,
-            height: 400,
-            resizable: false,
+            width: 560,
+            height: 560,
+            resizable: true,
             center: true,
           });
           await aboutWindow.once("tauri://error", (error) => {

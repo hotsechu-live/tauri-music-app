@@ -85,6 +85,18 @@ select {
   font: inherit;
 }
 
+select {
+  color: #1e3a8a;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
+  font-weight: 700;
+}
+
+select:hover {
+  background: #bfdbfe;
+  border-color: #60a5fa;
+}
+
 button {
   cursor: pointer;
   background: #2563eb;
@@ -419,7 +431,6 @@ button {
   font-size: 1.1rem;
 }
 
-.metadata-create-form,
 .metadata-definitions-list li {
   display: flex;
   align-items: center;
@@ -427,7 +438,7 @@ button {
 }
 
 .metadata-create-help {
-  margin-top: 0;
+  margin: 0;
   color: #4b5563;
 }
 
@@ -437,8 +448,28 @@ button {
   min-width: 0;
 }
 
+.metadata-create-form input {
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+  color: #374151;
+}
+
 .metadata-create-button {
   flex-shrink: 0;
+}
+
+.playlist-create-card .playlist-create-form button.playlist-create-button,
+.metadata-create-card .metadata-create-form button.metadata-create-button {
+  white-space: nowrap;
+  flex: none;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .metadata-definitions-list {
@@ -528,7 +559,8 @@ button {
   width: 100%;
 }
 
-.playlist-create-card {
+.playlist-create-card,
+.metadata-create-card {
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -536,34 +568,46 @@ button {
   min-width: 0;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
 }
 
-.playlist-create-card h2 {
+.metadata-create-card {
+  flex-wrap: wrap;
+}
+
+.playlist-create-card h2,
+.metadata-create-card h2 {
   margin: 0;
   font-size: 1.1rem;
   white-space: nowrap;
 }
 
-.playlist-create-form {
+.playlist-create-form,
+.metadata-create-form {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
   gap: 0.5rem;
   flex: 1;
   min-width: 0;
 }
 
-.playlist-create-button {
-  white-space: nowrap;
-  flex: none;
-  width: 2rem;
-  height: 2rem;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.playlist-create-form {
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.metadata-create-form {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.metadata-create-card .metadata-create-help {
+  flex-basis: 100%;
+}
+
+.playlist-create-form input {
+  background: #fef9c3;
+  border: 1px solid #fde68a;
+  color: #374151;
 }
 
 .playlist-selector {
@@ -893,7 +937,6 @@ button:not(.icon-button.danger):not(.menu-item):hover {
 }
 
 #confirm-import-btn,
-#create-metadata-definition-form .metadata-create-button,
 #rename-metadata-definition-form button[type="submit"],
 #rename-collection-form button[type="submit"],
 #edit-playlist-form .playlist-save-button {
@@ -904,7 +947,6 @@ button:not(.icon-button.danger):not(.menu-item):hover {
 }
 
 #confirm-import-btn:hover,
-#create-metadata-definition-form .metadata-create-button:hover,
 #rename-metadata-definition-form button[type="submit"]:hover,
 #rename-collection-form button[type="submit"]:hover,
 #edit-playlist-form .playlist-save-button:hover {
@@ -919,6 +961,7 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   line-height: 1.5;
 }
 
+#import-btn,
 #play-filtered-btn,
 #playback-mode,
 #search-field,
@@ -931,6 +974,7 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   font-weight: 700;
 }
 
+#import-btn:hover,
 #play-filtered-btn:hover,
 #playback-mode:hover,
 #search-field:hover,
@@ -1265,20 +1309,22 @@ button:not(.icon-button.danger):not(.menu-item):hover {
   border-radius: 8px;
 }
 
-.tools-button {
+.tools-panel .tools-section .tools-actions button.tools-button {
   padding: 0.5rem 1rem;
   margin-right: 0.5rem;
   margin-bottom: 0.5rem;
-  background: #3b82f6;
-  color: white;
-  border: none;
+  color: #1e3a8a;
+  background: #dbeafe;
+  border: 1px solid #93c5fd;
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.9rem;
+  font-weight: 700;
 }
 
-.tools-button:hover:not(:disabled) {
-  background: #2563eb;
+.tools-panel .tools-section .tools-actions button.tools-button:hover:not(:disabled) {
+  background: #bfdbfe;
+  border-color: #60a5fa;
 }
 
 .tools-button:disabled {
